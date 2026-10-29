@@ -24,3 +24,10 @@ jobs:
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+      - name: Package source ZIP
+        run: zip -qr aahvaanam-kitchen-source.zip . -x '.git/*' 'node_modules/*' '.next/*' '.env.local' '.env.*.local' 'aahvaanam-kitchen-source.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aahvaanam-kitchen-source
+          path: aahvaanam-kitchen-source.zip
+          retention-days: 30
