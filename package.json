@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "verify:source": "node scripts/check-source.mjs",
     "mongo:indexes": "node scripts/mongodb-indexes.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.57.0",
     "mongodb": "^6.20.0",
     "server-only": "^0.0.1",
     "lucide-react": "^0.468.0",
