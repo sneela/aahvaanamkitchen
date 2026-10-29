@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { randomUUID, randomBytes, scryptSync } from 'node:crypto';
+import { spawn, execFileSync } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { MongoClient } from 'mongodb';
+if (!process.env.MONGODB_URI || !/^(mongodb:\/\/127\.0\.0\.1|mongodb:\/\/localhost)/.test(process.env.MONGODB_URI)) throw Error('This test is restricted to local MongoDB only');
+const dbName='aahvaanam_ci_'+Date.now(),password='IntegrationOnly-'+randomUUID();
+const salt=randomBytes(16).toString('hex'),hash=scryptSync(password,Buffer.from(salt,'hex'),64).toString('hex');
+const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:salt+':'+hash,SESSION_SECRET:randomBytes(40).toString('hex')};
+const client=new MongoClient(env.MONGODB_URI,{serverSelectionTimeoutMS:5000});
+let child,logs='';
+const base='http://127.0.0.1:3218';
+const request=async(path,method='GET',body,cookie)=>{const r=await fetch(base+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});const text=await r.text();let data;try{data=JSON.parse(text)}catch{data={raw:text.slice(0,250)}}return {status:r.status,data,headers:r.headers}};
+const expect=async(path,method,body,status,cookie)=>{const r=await request(path,method,body,cookie);assert.equal(r.status,status,path+' returned '+r.status+': '+JSON.stringify(r.data));return r};
+const easternFuture=()=>{const d=new Date(Date.now()+7*86400000);const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day};
+try{
+ await client.connect();
+ execFileSync(process.execPath,['scripts/mongodb-indexes.mjs'],{env,stdio:'pipe'});
+ execFileSync(process.execPath,['scripts/seed-mongodb.mjs'],{env,stdio:'pipe'});
+ const db=client.db(dbName);
+ assert.equal(await db.collection('products').countDocuments(),31);
+ child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p','3218'],{env,stdio:'pipe'});
+ child.stdout.on('data',b=>logs+=b.toString());child.stderr.on('data',b=>logs+=b.toString());
+ let ready=false;for(let i=0;i<50;i++){if(child.exitCode!==null)throw Error('Next exited: '+logs);try{const r=await fetch(base);if(r.ok){ready=true;break}}catch{}await sleep(500)}
+ assert.ok(ready,'Next did not start: '+logs);
+ const store=await expect('/api/storefront','GET',undefined,200);assert.equal(store.data.connected,true);assert.equal(store.data.products.length,31);assert.equal(store.data.settings.orderingEnabled,false);
+ await expect('/api/orders','POST',{},400); // Validation runs before the ordering-enabled check.
+ await expect('/api/admin','GET',undefined,401);
+ await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password:'incorrect'},401);
+ const login=await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password},200);
+ const cookie=login.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie?.startsWith('aahvaanam_admin='));
+ const admin=await expect('/api/admin','GET',undefined,200,cookie);assert.equal(admin.data.products.length,31);
+ await expect('/api/admin','PATCH',{resource:'settings',ordering_enabled:true,delivery_enabled:true,delivery_minimum_cents:2000,default_delivery_fee_cents:300},200,cookie);
+ const updated=await expect('/api/storefront','GET',undefined,200);assert.equal(updated.data.settings.orderingEnabled,true);
+ const date=easternFuture(),order={name:'Test Customer',phone:'2165550101',date,time:'18:00',address:'123 Test Street, Cleveland OH 44101',notes:'Integration test',fulfillment:'delivery',requestId:randomUUID(),items:[{slug:'juwar-roti',quantity:2}],website:''};
+ const created=await expect('/api/orders','POST',order,201);assert.equal(created.data.order.totalCents,2300);assert.equal(created.data.order.deliveryFeeCents,300);
+ const repeat=await expect('/api/orders','POST',order,200);assert.equal(repeat.data.order.number,created.data.order.number);
+ assert.equal(await db.collection('orders').countDocuments(),1);
+ const stored=await db.collection('orders').findOne({client_request_id:order.requestId});assert.equal(stored.status,'pending');assert.equal(stored.payment_status,'unpaid');
+ await expect('/api/orders','POST',{...order,requestId:randomUUID(),items:[{slug:'juwar-roti',quantity:1}]},422);
+ await expect('/api/catering','POST',{name:'Test Caterer',phone:'2165550102',date,guests:12,message:'A small family gathering with vegetarian food.',website:''},201);
+ await expect('/api/reviews','POST',{name:'Test Reviewer',rating:5,review:'A very pleasant experience with homemade food.',website:''},201);
+ const reviews=await db.collection('reviews').find().toArray();assert.equal(reviews.length,1);assert.equal(reviews[0].is_approved,false);
+ await expect('/api/admin','PATCH',{resource:'review',id:String(reviews[0]._id),is_approved:true},200,cookie);
+ const published=await expect('/api/storefront','GET',undefined,200);assert.equal(published.data.reviews.length,1);
+ await expect('/api/admin','POST',{resource:'special',title:'Integration Festival Special',description:'Available by advance request',is_published:true},200,cookie);
+ const special=await expect('/api/storefront','GET',undefined,200);assert.equal(special.data.specials.length,1);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'completed',payment_status:'paid'},200,cookie);
+ const changed=await db.collection('orders').findOne({_id:stored._id});assert.equal(changed.status,'completed');assert.equal(changed.payment_status,'paid');
+ await expect('/api/auth/logout','POST',{},200,cookie);
+ await expect('/api/admin','GET',undefined,401);
+ console.log('MongoDB integration passed: seed, login, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status and logout.');
+}finally{if(child){child.kill('SIGTERM');await sleep(300)}try{await client.db(dbName).dropDatabase()}catch{}await client.close()}

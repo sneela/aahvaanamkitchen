@@ -13,7 +13,8 @@
     "mongo:seed": "node scripts/seed-mongodb.mjs",
     "admin:hash": "node scripts/hash-password.mjs",
     "test:logic": "node --experimental-strip-types --test tests/*.test.mjs",
-    "smoke:offline": "node scripts/smoke-offline.mjs"
+    "smoke:offline": "node scripts/smoke-offline.mjs",
+    "test:integration": "node scripts/integration-local.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",
