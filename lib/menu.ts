@@ -1,0 +1,323 @@
+export type MenuItem = {
+  id: string; name: string; category: string; price: number; unit: string;
+  description: string; preOrder?: boolean; preorderNoticeHours?: number; image: string; vegetarian?: boolean | null;
+};
+export const menuItems: MenuItem[] = [
+  {
+    "id": "juwar-roti",
+    "name": "Jowar Roti",
+    "category": "Traditional Rotis",
+    "price": 10,
+    "unit": "5 pieces",
+    "description": "Traditional millet rotis, made fresh to order.",
+    "image": "https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "ragi-roti",
+    "name": "Ragi Roti",
+    "category": "Traditional Rotis",
+    "price": 10,
+    "unit": "5 pieces",
+    "description": "Wholesome finger-millet rotis.",
+    "image": "https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "rice-roti",
+    "name": "Rice Roti",
+    "category": "Traditional Rotis",
+    "price": 10,
+    "unit": "5 pieces",
+    "description": "Soft rice-flour rotis for your home-style meal.",
+    "image": "https://images.unsplash.com/photo-1626074353765-517a681e40be?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "dal",
+    "name": "Any Dal",
+    "category": "Vegetarian Curries & Fries",
+    "price": 10,
+    "unit": "16 oz",
+    "description": "Ask for spinach dal or tomato dal.",
+    "image": "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "mixed-veg",
+    "name": "Mixed Vegetable Curry",
+    "category": "Vegetarian Curries & Fries",
+    "price": 10,
+    "unit": "16 oz",
+    "description": "A comforting, home-style vegetable curry.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "palak-paneer",
+    "name": "Palak Paneer",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "Paneer in a rich spinach gravy.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "paneer-butter",
+    "name": "Paneer Butter Masala",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "Paneer in a creamy tomato-based sauce.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "eggplant-kurma",
+    "name": "Eggplant Kurma",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "A flavorful traditional eggplant preparation.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "tindora-fry",
+    "name": "Tindora Fry",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "Seasoned tindora, prepared home style.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "okra-fry",
+    "name": "Okra Fry",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "A classic Indian vegetable side.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "potato-fry",
+    "name": "Potato Fry",
+    "category": "Vegetarian Curries & Fries",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "Seasoned potato fry, perfect with rice or rotis.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "chicken-curry",
+    "name": "Chicken Curry",
+    "category": "Non-Vegetarian",
+    "price": 15,
+    "unit": "16 oz",
+    "description": "A hearty, home-style chicken curry.",
+    "image": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=85"
+  },
+  {
+    "id": "chicken-fry",
+    "name": "Chicken Fry",
+    "category": "Non-Vegetarian",
+    "price": 15,
+    "unit": "16 oz",
+    "description": "Flavorful Indian-style chicken fry.",
+    "image": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=85"
+  },
+  {
+    "id": "mirchi-bajji",
+    "name": "Mirchi Bajji",
+    "category": "Homemade Snacks",
+    "price": 10,
+    "unit": "5 pieces",
+    "description": "Crispy, golden chili fritters.",
+    "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "mysore-bonda",
+    "name": "Mysore Bonda",
+    "category": "Homemade Snacks",
+    "price": 10,
+    "unit": "5 pieces",
+    "description": "Soft inside, golden and crisp outside.",
+    "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "punugulu",
+    "name": "Punugulu",
+    "category": "Homemade Snacks",
+    "price": 10,
+    "unit": "12 pieces",
+    "description": "Crispy South Indian fritters, made fresh.",
+    "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "pakodi",
+    "name": "Pakodi",
+    "category": "Homemade Snacks",
+    "price": 10,
+    "unit": "per order",
+    "description": "Crunchy Indian-style savory fritters.",
+    "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "aloo-bajji",
+    "name": "Aloo Bajji",
+    "category": "Homemade Snacks",
+    "price": 10,
+    "unit": "6 pieces",
+    "description": "Potato slices dipped in spiced batter and fried.",
+    "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "idly-batter",
+    "name": "Idly Batter",
+    "category": "Batters & Pantry",
+    "price": 10,
+    "unit": "3 lb",
+    "description": "Fresh batter; advance order required.",
+    "image": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "dosa-batter",
+    "name": "Dosa Batter",
+    "category": "Batters & Pantry",
+    "price": 10,
+    "unit": "3 lb",
+    "description": "Fresh batter; advance order required.",
+    "image": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "vada-batter",
+    "name": "Vada Batter",
+    "category": "Batters & Pantry",
+    "price": 10,
+    "unit": "3 lb",
+    "description": "Fresh batter; advance order required.",
+    "image": "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "plain-yogurt",
+    "name": "Plain Yogurt",
+    "category": "Batters & Pantry",
+    "price": 12,
+    "unit": "3 lb",
+    "description": "Homemade yogurt; advance order required.",
+    "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "greek-yogurt",
+    "name": "Greek Yogurt",
+    "category": "Batters & Pantry",
+    "price": 15,
+    "unit": "3 lb",
+    "description": "Homemade Greek yogurt; advance order required.",
+    "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "regular-paneer",
+    "name": "Regular Paneer",
+    "category": "Batters & Pantry",
+    "price": 15,
+    "unit": "3 lb",
+    "description": "Homemade paneer; advance order required.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "malai-paneer",
+    "name": "Malai Paneer",
+    "category": "Batters & Pantry",
+    "price": 20,
+    "unit": "3 lb",
+    "description": "Homemade malai paneer; advance order required.",
+    "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "chicken-pickle",
+    "name": "Chicken Pickle",
+    "category": "Pickles & Sweets",
+    "price": 16,
+    "unit": "16 oz",
+    "description": "Homemade chicken pickle; advance order required.",
+    "image": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true
+  },
+  {
+    "id": "tomato-pickle",
+    "name": "Tomato Pickle",
+    "category": "Pickles & Sweets",
+    "price": 10,
+    "unit": "16 oz",
+    "description": "Homemade tomato pickle; advance order required.",
+    "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "cauliflower-pickle",
+    "name": "Cauliflower Pickle",
+    "category": "Pickles & Sweets",
+    "price": 10,
+    "unit": "16 oz",
+    "description": "Homemade cauliflower pickle; advance order required.",
+    "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=85",
+    "preOrder": true,
+    "vegetarian": true
+  },
+  {
+    "id": "bakshalu",
+    "name": "Bakshalu (Bobbatlu)",
+    "category": "Pickles & Sweets",
+    "price": 30,
+    "unit": "15 pieces",
+    "description": "Traditional sweet flatbreads, made for sharing.",
+    "image": "https://images.unsplash.com/photo-1605197161470-5d7d8f3d7a7c?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "purnalu",
+    "name": "Purnalu",
+    "category": "Pickles & Sweets",
+    "price": 30,
+    "unit": "15 pieces",
+    "description": "Traditional festive sweet, prepared to order.",
+    "image": "https://images.unsplash.com/photo-1605197161470-5d7d8f3d7a7c?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  },
+  {
+    "id": "sweet-pongal",
+    "name": "Sweet Pongal",
+    "category": "Pickles & Sweets",
+    "price": 12,
+    "unit": "16 oz",
+    "description": "Traditional sweet pongal.",
+    "image": "https://images.unsplash.com/photo-1605197161470-5d7d8f3d7a7c?auto=format&fit=crop&w=800&q=85",
+    "vegetarian": true
+  }
+];
