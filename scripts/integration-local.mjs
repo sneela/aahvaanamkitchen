@@ -56,7 +56,7 @@ try{
  await expect('/api/admin','PATCH',{resource:'product',id:jowar.id,is_available:false},200,cookie);
  const currentCatalogResponse=await fetch(base+'/catalog');assert.equal(currentCatalogResponse.status,200);
  const currentCatalogHtml=await currentCatalogResponse.text();
- assert.ok(currentCatalogHtml.includes('$12.34'),'Catalog must show current MongoDB price');
+ assert.ok(currentCatalogHtml.includes('12.34'),'Catalog must show current MongoDB price; HTML may split currency into React text nodes');
  assert.ok(!currentCatalogHtml.includes('Jowar Roti'),'Catalog must exclude unavailable products');
  const currentStorefront=await expect('/api/storefront','GET',undefined,200);
  assert.ok(!currentStorefront.data.products.some(p=>p.id==='juwar-roti'),'Storefront must exclude unavailable products');
