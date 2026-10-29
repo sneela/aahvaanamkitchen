@@ -17,7 +17,7 @@ try {
       slug: item.id, name: item.name, description: item.description, category_id: slug(item.category),
       price_cents: Math.round(item.price*100), unit_label: item.unit, image_url: item.image,
       is_available: true, requires_preorder: item.preOrder || false,
-      preorder_notice_hours: item.preorderNoticeHours || 24, is_vegetarian: item.vegetarian ?? null, sort_order,
+      preorder_notice_hours: item.preorderNoticeHours || (['idly-batter','dosa-batter','vada-batter'].includes(item.id) ? 48 : 24), is_vegetarian: item.vegetarian ?? null, sort_order,
     } }, { upsert: true });
   }
   await db.collection('settings').updateOne({ _id: 'store' }, { $setOnInsert: {
