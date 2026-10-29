@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify:source": "node scripts/check-source.mjs",
+    "audit:launch": "node scripts/launch-audit.mjs",
+    "audit:launch:strict": "node scripts/launch-audit.mjs --strict",
     "mongo:indexes": "node scripts/mongodb-indexes.mjs",
     "mongo:seed": "node scripts/seed-mongodb.mjs",
     "admin:hash": "node scripts/hash-password.mjs",
