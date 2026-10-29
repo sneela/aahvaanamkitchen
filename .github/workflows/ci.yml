@@ -35,9 +35,19 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: '1'
       - run: npm run smoke:offline
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke:browser
       - run: npm run test:integration
         env:
           MONGODB_URI: mongodb://127.0.0.1:27017
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aahvaanam-browser-screenshots
+          path: artifacts/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Package source ZIP
         run: zip -qr aahvaanam-kitchen-source.zip . -x '.git/*' 'node_modules/*' '.next/*' '.env.local' '.env.*.local' 'aahvaanam-kitchen-source.zip'
       - uses: actions/upload-artifact@v4
