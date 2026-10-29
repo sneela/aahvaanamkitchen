@@ -1,9 +1,11 @@
-# Aahvaanam Kitchen — MongoDB migration (in progress)
+# MongoDB Atlas migration — active development
 
-This feature branch introduces MongoDB Atlas M0 groundwork. **Not production ready.** Existing ordering/admin APIs still use Supabase until migrated. Do not enable ordering yet.
+Project: `aahvaanamkitchen` / `Cluster0` / `aahvaanam_kitchen`.
 
-Included: MongoDB server-only connection, document types, index setup, safe disabled-by-default ordering/delivery settings.
+MongoDB backend code is being pushed incrementally to `feature/mongodb-free-tier`. The backend includes server-only connection, schema types, indexes, seed, order requests, catering, reviews, specials, settings and secure admin sessions. **This branch is not ready to deploy** because the original storefront, admin dashboard, CSS, and binary branding assets have not yet been fully restored to GitHub.
 
-Setup: Create Atlas M0, set server-only MONGODB_URI and MONGODB_DB_NAME, run npm run mongo:indexes. Never commit credentials. Google Sites can link/embed but cannot run Next.js server APIs. Select a free commercial-compatible app host.
+The separate development ZIP contains the original storefront, cart, admin UI, emblem, catalog PDF and MongoDB implementation. No live Atlas credentials or production deployment have been used.
 
-Remaining: MongoDB-backed order/admin/storefront APIs, administrator sessions, seed catalog, validation and tests. No deployment or live DB connection has been made.
+Before production: finish GitHub asset/UI sync, run `npm install`, `npm run typecheck`, `npm run build`, connect a test Atlas cluster, run indexes/seed, verify admin login and full checkout/review/catering workflows. Keep ordering disabled until food-business licensing and operating policies are confirmed.
+
+Commercial-compatible free-tier hosting candidate: Netlify Free (see README). Vercel Hobby prohibits commercial use.
