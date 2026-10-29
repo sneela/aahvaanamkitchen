@@ -36,3 +36,11 @@ Admin routes require a signed HttpOnly SameSite=Strict cookie, HMAC verification
 - `GET/POST/PATCH/DELETE /api/admin` — server-side authenticated management
 
 The GitHub Actions workflow has passed source checks, logic tests, TypeScript checking, a Next.js production build, offline HTTP smoke checks, and end-to-end API tests against an isolated local MongoDB service. It also publishes a downloadable source ZIP and browser screenshots as workflow artifacts. These tests do not establish connectivity to your private Atlas Cluster0 or confirm a production deployment. See the latest Actions run for current results.
+
+## Release audit and reverse-proxy security
+
+Run `npm run audit:launch` to list **known static blockers** without failing CI, or `npm run audit:launch:strict` to fail when those blockers remain. The static audit checks for the full-resolution original logo, original catalog PDF, external placeholder photos, default-disabled ordering/delivery, and deployment/privacy documentation. **A passing build or audit does not prove that private Atlas, HTTPS/DNS, licensing, or live order acceptance works.** Verify those separately with your own private environment; do not put credentials in GitHub or chat.
+
+On Netlify, the MongoDB-backed abuse limiter now prioritizes Netlify's `x-nf-client-connection-ip` edge header and validates IP syntax. On other hosts, `x-real-ip` and `x-forwarded-for` are usable **only if the trusted reverse proxy strips and replaces client-supplied values**; do not expose the application server directly while relying on forwarded IP headers. Consider additional platform-level rate-limiting rules for `/api/auth/login`, `/api/orders`, `/api/catering`, and `/api/reviews`. Netlify documents per-IP rate limiting on all plans at https://docs.netlify.com/manage/security/secure-access-to-sites/rate-limiting/.
+
+The original high-resolution images in the separate development ZIP are **not** currently committed to GitHub. Do not mark the release complete until the original assets are committed, licensed product photos replace placeholders, the strict static audit passes, and private production checks are recorded.
