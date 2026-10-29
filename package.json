@@ -12,7 +12,8 @@
     "mongo:indexes": "node scripts/mongodb-indexes.mjs",
     "mongo:seed": "node scripts/seed-mongodb.mjs",
     "admin:hash": "node scripts/hash-password.mjs",
-    "test:logic": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test:logic": "node --experimental-strip-types --test tests/*.test.mjs",
+    "smoke:offline": "node scripts/smoke-offline.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",
