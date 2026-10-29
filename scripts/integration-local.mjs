@@ -48,7 +48,19 @@ try{
  const special=await expect('/api/storefront','GET',undefined,200);assert.equal(special.data.specials.length,1);
  await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'completed',payment_status:'paid'},200,cookie);
  const changed=await db.collection('orders').findOne({_id:stored._id});assert.equal(changed.status,'completed');assert.equal(changed.payment_status,'paid');
+ const initialCatalogResponse=await fetch(base+'/catalog');assert.equal(initialCatalogResponse.status,200);
+ const initialCatalogHtml=await initialCatalogResponse.text();assert.ok(initialCatalogHtml.includes('Jowar Roti'),'Live catalog should include available menu items');
+ const jowar=admin.data.products.find(p=>p.slug==='juwar-roti'),ragi=admin.data.products.find(p=>p.slug==='ragi-roti');
+ assert.ok(jowar?.id && ragi?.id,'Seeded rotis should exist');
+ await expect('/api/admin','PATCH',{resource:'product',id:ragi.id,price_cents:1234},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'product',id:jowar.id,is_available:false},200,cookie);
+ const currentCatalogResponse=await fetch(base+'/catalog');assert.equal(currentCatalogResponse.status,200);
+ const currentCatalogHtml=await currentCatalogResponse.text();
+ assert.ok(currentCatalogHtml.includes('$12.34'),'Catalog must show current MongoDB price');
+ assert.ok(!currentCatalogHtml.includes('Jowar Roti'),'Catalog must exclude unavailable products');
+ const currentStorefront=await expect('/api/storefront','GET',undefined,200);
+ assert.ok(!currentStorefront.data.products.some(p=>p.id==='juwar-roti'),'Storefront must exclude unavailable products');
  await expect('/api/auth/logout','POST',{},200,cookie);
  await expect('/api/admin','GET',undefined,401);
- console.log('MongoDB integration passed: seed, login, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status and logout.');
+ console.log('MongoDB integration passed: seed, login, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, live catalog synchronization and logout.');
 }finally{if(child){child.kill('SIGTERM');await sleep(300)}try{await client.db(dbName).dropDatabase()}catch{}await client.close()}
