@@ -31,6 +31,12 @@ try{
  const login=await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password},200);
  const cookie=login.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie?.startsWith('aahvaanam_admin='));
  const admin=await expect('/api/admin','GET',undefined,200,cookie);assert.equal(admin.data.products.length,31);
+ await expect('/api/admin','POST',{resource:'category',category_id:'integration-seasonal',name:'Integration Seasonal',sort_order:99,is_active:true},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'category',category_id:'integration-seasonal',is_active:false},200,cookie);
+ const withCategory=await expect('/api/admin','GET',undefined,200,cookie);
+ assert.equal(withCategory.data.categories.find(c=>c.id==='integration-seasonal')?.is_active,false);
+ await expect('/api/admin','DELETE',{resource:'category',category_id:'traditional-rotis'},409,cookie);
+ await expect('/api/admin','DELETE',{resource:'category',category_id:'integration-seasonal'},200,cookie);
  await expect('/api/admin','PATCH',{resource:'settings',ordering_enabled:true,delivery_enabled:true,delivery_minimum_cents:2000,default_delivery_fee_cents:300},200,cookie);
  const updated=await expect('/api/storefront','GET',undefined,200);assert.equal(updated.data.settings.orderingEnabled,true);
  const date=easternFuture(),order={name:'Test Customer',phone:'2165550101',date,time:'18:00',address:'123 Test Street, Cleveland OH 44101',notes:'Integration test',fulfillment:'delivery',requestId:randomUUID(),items:[{slug:'juwar-roti',quantity:2}],website:''};
@@ -62,5 +68,5 @@ try{
  assert.ok(!currentStorefront.data.products.some(p=>p.id==='juwar-roti'),'Storefront must exclude unavailable products');
  await expect('/api/auth/logout','POST',{},200,cookie);
  await expect('/api/admin','GET',undefined,401);
- console.log('MongoDB integration passed: seed, login, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, live catalog synchronization and logout.');
+ console.log('MongoDB integration passed: seed, login, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, category management, live catalog synchronization and logout.');
 }finally{if(child){child.kill('SIGTERM');await sleep(300)}try{await client.db(dbName).dropDatabase()}catch{}await client.close()}
