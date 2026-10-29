@@ -15,7 +15,8 @@
     "test:logic": "node --experimental-strip-types --test tests/*.test.mjs",
     "smoke:offline": "node scripts/smoke-offline.mjs",
     "test:integration": "node scripts/integration-local.mjs",
-    "mongo:verify": "node scripts/verify-mongodb.mjs"
+    "mongo:verify": "node scripts/verify-mongodb.mjs",
+    "smoke:browser": "node scripts/browser-smoke.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19.1.9",
     "eslint": "^9.35.0",
     "eslint-config-next": "^15.5.4",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "playwright": "^1.56.1"
   }
 }
