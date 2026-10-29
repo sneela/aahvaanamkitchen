@@ -6,7 +6,7 @@ const menu = JSON.parse(read('scripts/seed-menu.json'));
 assert.equal(menu.length, 31, 'Original starter catalog should contain 31 items');
 assert.equal(new Set(menu.map(i => i.id)).size, menu.length, 'Unique menu slugs');
 for (const file of [
-  'public/images/aahvaanam-logo.png','public/aahvaanam-food-catalog.pdf',
+  'public/images/aahvaanam-logo.jpg','app/catalog/page.tsx',
   'app/page.tsx','app/globals.css','app/admin/page.tsx','app/admin/login/page.tsx','app/admin/dashboard.tsx',
   'app/api/storefront/route.ts','app/api/orders/route.ts','app/api/reviews/route.ts','app/api/catering/route.ts',
   'app/api/admin/route.ts','app/api/auth/login/route.ts','app/api/auth/logout/route.ts',

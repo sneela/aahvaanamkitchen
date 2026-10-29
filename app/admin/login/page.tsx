@@ -16,7 +16,7 @@ export default function AdminLogin() {
     finally { setLoading(false); }
   }
   return <main className="admin-login"><div className="login-card">
-    <Image src="/images/aahvaanam-logo.png" alt="Aahvaanam" width={96} height={96}/>
+    <Image src="/images/aahvaanam-logo.jpg" alt="Aahvaanam" width={96} height={96}/>
     <h1>Kitchen administration</h1><p>Sign in with your authorized kitchen administrator account.</p>
     <form onSubmit={login}><label>Email<input type="email" required autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)}/></label>
     <label>Password<input type="password" required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/></label>
