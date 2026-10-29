@@ -14,7 +14,8 @@
     "admin:hash": "node scripts/hash-password.mjs",
     "test:logic": "node --experimental-strip-types --test tests/*.test.mjs",
     "smoke:offline": "node scripts/smoke-offline.mjs",
-    "test:integration": "node scripts/integration-local.mjs"
+    "test:integration": "node scripts/integration-local.mjs",
+    "mongo:verify": "node scripts/verify-mongodb.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",
