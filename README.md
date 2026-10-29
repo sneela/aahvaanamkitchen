@@ -12,7 +12,7 @@ Use Node 22. In Atlas, use project `aahvaanamkitchen`, cluster `Cluster0`, datab
 2. Generate the admin scrypt password hash and random session secret locally with `npm run admin:hash`. Store secrets only in the environment.
 3. Run `npm install`, `npm run mongo:indexes`, `npm run mongo:seed`. The seed creates missing products and **disabled** ordering/delivery settings; it does not overwrite later edits.
 4. Run `npm run verify:source`, `npm run test:logic`, `npm run typecheck`, `npm run build`, then `npm run dev`.
-5. Open `http://localhost:3000` and `http://localhost:3000/admin/login`. Verify an unauthorized admin API request is rejected; sign in, edit menu, create a pending order, retry the same request ID, verify server pricing and delivery minimum, approve a review, update specials, and sign out.
+5. For local database integration, run `npm run test:integration` **only against a local MongoDB instance**; the script rejects Atlas/cloud URIs and creates/deletes its own temporary test database. Open `http://localhost:3000` and `http://localhost:3000/admin/login`. Verify an unauthorized admin API request is rejected; sign in, edit menu, create a pending order, retry the same request ID, verify server pricing and delivery minimum, approve a review, update specials, and sign out.
 
 No automatic order acceptance, payment collection, delivery routing, emails or SMS are implemented. Public order requests are stored as `pending`/`unpaid`; all fulfillment and payment are handled manually.
 
@@ -35,4 +35,4 @@ Admin routes require a signed HttpOnly SameSite=Strict cookie, HMAC verification
 - `POST /api/auth/login`, `POST /api/auth/logout` — admin sessions
 - `GET/POST/PATCH/DELETE /api/admin` — server-side authenticated management
 
-The branch includes a GitHub Actions workflow to run source checks, logic tests, type checking and a production build. The CI result is the source of truth for build verification; no claim of a passing build is made until it runs successfully.
+The GitHub Actions workflow has passed source checks, logic tests, TypeScript checking, a Next.js production build, offline HTTP smoke checks, and end-to-end API tests against an isolated local MongoDB service. It also publishes a downloadable source ZIP as a workflow artifact. These tests do not establish connectivity to your private Atlas Cluster0 or confirm a production deployment. See the latest Actions run for current results.
