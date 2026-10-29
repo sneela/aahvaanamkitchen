@@ -29,6 +29,7 @@ jobs:
           cache-dependency-path: package.json
       - run: npm install --no-audit --no-fund
       - run: npm run verify:source
+      - run: npm run audit:launch
       - run: npm run test:logic
       - run: npm run typecheck
       - run: npm run build
