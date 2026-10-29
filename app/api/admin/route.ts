@@ -17,14 +17,14 @@ export async function GET() {
     const [orders, products, categories, settings, specials, reviews, catering] = await Promise.all([
       db.collection<OrderDoc>('orders').find().sort({ created_at: -1 }).limit(100).toArray(),
       db.collection<ProductDoc>('products').find().sort({ sort_order: 1 }).toArray(),
-      db.collection<{ id: string; name: string; sort_order: number }>('categories').find().sort({ sort_order: 1 }).toArray(),
+      db.collection<{ id: string; name: string; sort_order: number; is_active: boolean }>('categories').find().sort({ sort_order: 1 }).toArray(),
       db.collection<SettingsDoc>('settings').findOne({ _id: 'store' }),
       db.collection('specials').find().sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('reviews').find().sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('catering_inquiries').find().sort({ created_at: -1 }).limit(100).toArray(),
     ]);
     return NextResponse.json({ orders: orders.map(serialize), products: products.map(serialize),
-      categories: categories.map(c => ({ id: c.id, name: c.name })), settings: { ...defaultSettings, ...settings },
+      categories: categories.map(c => ({ id: c.id, name: c.name, is_active: c.is_active, sort_order: c.sort_order })), settings: { ...defaultSettings, ...settings },
       specials: specials.map(serialize), reviews: reviews.map(serialize), catering: catering.map(serialize) },
       { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return jsonError(e, 'Unable to load administrator dashboard'); }
@@ -120,6 +120,37 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (method === 'POST') await col.insertOne({ slug:'',name:'',description:'',category_id:null,price_cents:0,unit_label:'per order',
           image_url:null,is_available:true,requires_preorder:false,preorder_notice_hours:24,is_vegetarian:null,sort_order:100,...data } as ProductDoc);
         else if (!(await col.updateOne({ _id: new ObjectId(id) }, { $set: data })).matchedCount) return badRequest('Product not found',404);
+      }
+    } else if (resource === 'category') {
+      const categoryId = str(b.category_id, 80);
+      if (!/^[a-z0-9-]{2,80}$/.test(categoryId)) return badRequest('Invalid category ID');
+      const col = db.collection('categories');
+      if (method === 'DELETE') {
+        if (await db.collection('products').findOne({ category_id: categoryId })) return badRequest('Move or delete products in this category first', 409);
+        if (!(await col.deleteOne({ id: categoryId })).deletedCount) return badRequest('Category not found', 404);
+      } else {
+        if (b.name !== undefined) {
+          const name = str(b.name, 80);
+          if (name.length < 2) return badRequest('Category name must have at least 2 characters');
+          data.name = name;
+        }
+        if (b.sort_order !== undefined) {
+          const sortOrder = int(b.sort_order, -100000, 100000);
+          if (sortOrder === null) return badRequest('Invalid category sort order');
+          data.sort_order = sortOrder;
+        }
+        if (b.is_active !== undefined) {
+          const active = bool(b.is_active);
+          if (active === null) return badRequest('Invalid category availability');
+          data.is_active = active;
+        }
+        if (method === 'POST') {
+          if (!data.name) return badRequest('Category name is required');
+          await col.insertOne({ id: categoryId, name: data.name, is_active: data.is_active ?? true, sort_order: data.sort_order ?? 100 });
+        } else {
+          if (!Object.keys(data).length) return badRequest('No changes');
+          if (!(await col.updateOne({ id: categoryId }, { $set: data })).matchedCount) return badRequest('Category not found', 404);
+        }
       }
     } else if (resource === 'settings' && method === 'PATCH') {
       data = settingsFields(b); if (!Object.keys(data).length) return badRequest('No changes');
