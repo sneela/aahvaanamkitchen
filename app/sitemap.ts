@@ -1,0 +1,2 @@
+import type { MetadataRoute } from 'next';
+export default function sitemap():MetadataRoute.Sitemap{return ['','/catalog','/privacy'].map(path=>({url:'https://aahvaanamkitchen.com'+path,lastModified:new Date(),changeFrequency:'weekly' as const,priority:path?0.4:1}))}
