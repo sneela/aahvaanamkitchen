@@ -10,6 +10,7 @@ const statuses = ['pending','accepted','preparing','ready_for_pickup','out_for_d
 const payments = ['unpaid','paid','refunded'];
 const inquiryStatuses = ['new','contacted','closed'];
 const isId = (s: string) => /^[a-f0-9]{24}$/i.test(s);
+const slugFromName = (name: string, max = 100) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, max).replace(/-$/g, '');
 export async function GET() {
   try {
     await requireAdmin();
@@ -36,7 +37,7 @@ function productFields(b: Record<string, unknown>, creating: boolean) {
     if (key === 'image_url' && b[key] === null) { data[key] = null; continue; }
     if (typeof b[key] !== 'string' || b[key].length > max) throw new Error('Invalid '+key);
     const v = str(b[key],max);
-    if (key === 'image_url' && v && !/^https:\/\/[^\s]+$/.test(v) && !/^\/images\/[a-zA-Z0-9/_-]+\.(png|jpg|jpeg|webp)$/.test(v)) throw new Error('Invalid image URL');
+    if (key === 'image_url' && v && !/^https:\/\/[^\s]+$/.test(v) && !/^\/images\/[a-zA-Z0-9/_-]+\.(png|jpg|jpeg|webp)$/.test(v) && !/^\/api\/images\/[a-f0-9]{24}$/.test(v)) throw new Error('Invalid image URL');
     data[key] = v;
   }
   if (b.category_id !== undefined) {
@@ -58,7 +59,8 @@ function productFields(b: Record<string, unknown>, creating: boolean) {
     if (b.is_vegetarian !== null && typeof b.is_vegetarian !== 'boolean') throw new Error('Invalid vegetarian flag');
     data.is_vegetarian = b.is_vegetarian;
   }
-  if (creating && (!data.name || !data.slug || data.price_cents === undefined)) throw new Error('Name, slug and price are required');
+  if (creating && !data.slug && data.name) data.slug = slugFromName(String(data.name));
+  if (creating && (!data.name || !data.slug || data.price_cents === undefined)) throw new Error('Name and price are required, and name must produce a valid slug');
   if (data.slug !== undefined && !/^[a-z0-9-]+$/.test(String(data.slug))) throw new Error('Invalid slug');
   if (data.name !== undefined && !data.name) throw new Error('Name cannot be empty');
   if (data.unit_label !== undefined && !data.unit_label) throw new Error('Unit cannot be empty');
@@ -122,7 +124,7 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         else if (!(await col.updateOne({ _id: new ObjectId(id) }, { $set: data })).matchedCount) return badRequest('Product not found',404);
       }
     } else if (resource === 'category') {
-      const categoryId = str(b.category_id, 80);
+      const categoryId = method === 'POST' && !b.category_id ? slugFromName(str(b.name, 80), 80) : str(b.category_id, 80);
       if (!/^[a-z0-9-]{2,80}$/.test(categoryId)) return badRequest('Invalid category ID');
       const col = db.collection('categories');
       if (method === 'DELETE') {
@@ -181,7 +183,7 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
     } else return badRequest('Unsupported action');
     return NextResponse.json({ ok:true });
   } catch (e) {
-    if (e && typeof e === 'object' && 'code' in e && e.code === 11000) return badRequest('This slug or unique value already exists',409);
+    if (e && typeof e === 'object' && 'code' in e && e.code === 11000) return badRequest('This item or category name already exists. Choose a different name.',409);
     if (e instanceof Error && (e.message.startsWith('Invalid ') || e.message.includes('required') || e.message.includes('cannot be') || e.message.includes('must be'))) return badRequest(e.message);
     return jsonError(e,'Administrator update failed');
   }
