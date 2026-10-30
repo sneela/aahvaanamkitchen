@@ -66,6 +66,7 @@ try{
  assert.equal(updatedItem.price_cents,1599);
  assert.equal(updatedItem.slug,'integration-test-snack','Editing name must preserve order identifier');
  await expect('/api/admin','DELETE',{resource:'product',id:createdItem.id},200,cookie);
+ assert.equal((await fetch(base+imageBody.image_url)).status,404,'Deleting a product removes its unreferenced photo');
  await expect('/api/admin','DELETE',{resource:'category',category_id:'freshly-prepared-snacks'},200,cookie);
 
  await expect('/api/admin','POST',{resource:'category',category_id:'integration-seasonal',name:'Integration Seasonal',sort_order:99,is_active:true},200,cookie);
