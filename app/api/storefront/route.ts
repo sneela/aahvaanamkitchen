@@ -27,7 +27,7 @@ export async function GET() {
       products: products.filter(p => p.category_id === null || names.has(p.category_id)).map(p => ({
         id: p.slug, name: p.name, category: names.get(p.category_id || '') || 'Other', price: p.price_cents / 100,
         unit: p.unit_label, description: p.description, preOrder: p.requires_preorder,
-        preorderNoticeHours: p.preorder_notice_hours, image: p.image_url || '/images/aahvaanam-logo.jpg', vegetarian: p.is_vegetarian,
+        preorderNoticeHours: p.preorder_notice_hours, image: p.image_url || '/images/aahvaanam-correct-wordmark.webp', vegetarian: p.is_vegetarian,
       })),
       settings: { orderingEnabled: settings.ordering_enabled, deliveryEnabled: settings.delivery_enabled,
         deliveryMinimumCents: settings.delivery_minimum_cents, deliveryFeeCents: settings.default_delivery_fee_cents,
