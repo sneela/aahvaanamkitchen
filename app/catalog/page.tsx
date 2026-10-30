@@ -28,7 +28,7 @@ async function getCatalog(): Promise<CatalogResult> {
         price: p.price_cents / 100,
         unit: p.unit_label,
         description: p.description,
-        image: p.image_url || '/images/aahvaanam-logo.jpg',
+        image: p.image_url || '/images/aahvaanam-correct-wordmark.webp',
         preOrder: p.requires_preorder,
         preorderNoticeHours: p.preorder_notice_hours,
         vegetarian: p.is_vegetarian,
@@ -46,7 +46,7 @@ export default async function Catalog() {
   const categories = [...new Set(items.map(item => item.category))];
   return <main style={{ maxWidth: 850, margin: 'auto', padding: '30px 20px', fontFamily: 'Arial,sans-serif', color: '#50352d' }}>
     <header style={{ textAlign: 'center' }}>
-      <a href="/"><img src="/images/aahvaanam-logo.jpg" alt="Aahvaanam Kitchen logo" width="180" /></a>
+      <a href="/"><img src="/images/aahvaanam-correct-wordmark.webp" alt="Aahvaanam Kitchen logo" width="180" /></a>
       <h1>Aahvaanam Kitchen</h1>
       <p>Every bite feels like home · Greater Cleveland, Ohio</p>
       <p>WhatsApp +1 (216) 236-4062 · Takeout & catering</p>
