@@ -11,7 +11,20 @@ export async function parseBody(request: NextRequest, maxBytes = 16000): Promise
   if (length > maxBytes) throw new AccessError(413, 'Request is too large');
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new AccessError(415, 'JSON is required');
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) throw new AccessError(403, 'Cross-site request blocked');
+  if (origin) {
+    let submitted: URL;
+    try { submitted = new URL(origin); } catch { throw new AccessError(403, 'Cross-site request blocked'); }
+    const approvedHosts = new Set(['aahvaanamkitchen.com', 'www.aahvaanamkitchen.com', 'aahvaanamkitchen.netlify.app']);
+    const requestHost = request.headers.get('host')?.toLowerCase();
+    const forwardedHost = request.headers.get('x-forwarded-host')?.toLowerCase();
+    const sameOrigin = origin === new URL(request.url).origin;
+    // Netlify's Next.js adapter may expose an internal request URL behind its reverse proxy.
+    // Accept the public hostname only when it is a known Aahvaanam host AND matches
+    // the inbound host or the platform's forwarded host. Never accept arbitrary origins.
+    const proxyOrigin = submitted.protocol === 'https:' && approvedHosts.has(submitted.hostname.toLowerCase()) &&
+      (submitted.host.toLowerCase() === requestHost || submitted.host.toLowerCase() === forwardedHost);
+    if (!sameOrigin && !proxyOrigin) throw new AccessError(403, 'Cross-site request blocked');
+  }
   const fetchSite = request.headers.get('sec-fetch-site');
   if (fetchSite && !['same-origin','none'].includes(fetchSite)) throw new AccessError(403, 'Cross-site request blocked');
   const raw = await request.text();
