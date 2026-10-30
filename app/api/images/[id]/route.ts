@@ -14,7 +14,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     if (!doc || !['image/jpeg','image/png','image/webp'].includes(doc.mime_type))
       return new NextResponse('Image not found', { status: 404 });
     const bytes = doc.data.buffer;
-    return new NextResponse(new Uint8Array(bytes), {
+    const responseBody = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(responseBody).set(bytes);
+    return new NextResponse(responseBody, {
       headers: {
         'Content-Type': doc.mime_type,
         'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
