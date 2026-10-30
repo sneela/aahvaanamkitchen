@@ -62,10 +62,11 @@ function ImagePicker({ value, onChange, disabled }: { value: string | null | und
 
 function PriceInput({ cents, onChange, disabled, form }: { cents: number; onChange: (next: number) => void; disabled?: boolean; form?: string }) {
   const [typed, setTyped] = useState(dollars(cents));
-  useEffect(() => { setTyped(dollars(cents)); }, [cents]);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setTyped(dollars(cents)); }, [cents, focused]);
   return <input form={form} aria-label="Price in dollars" type="number" min="0" max="10000" step="0.01" required disabled={disabled} value={typed}
     onChange={event => { const next = event.target.value; setTyped(next); if (next !== '' && Number.isFinite(Number(next))) onChange(Math.round(Number(next) * 100)); }}
-    onBlur={() => setTyped(dollars(cents))} />;
+    onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); setTyped(dollars(cents)); }} />;
 }
 
 function ProductFields({ v, setV, categories, prefix, busy }: { v: CatalogRow; setV: (data: CatalogRow) => void; categories: CategoryRow[]; prefix: string; busy: boolean }) {
