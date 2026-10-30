@@ -37,6 +37,38 @@ try{
  const throttled=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','User-Agent':'rotating-test-final'},body:JSON.stringify({email:env.ADMIN_EMAIL,password:'incorrect'})});
  assert.equal(throttled.status,429,'Changing User-Agent must not bypass the login rate limit');
  const admin=await expect('/api/admin','GET',undefined,200,cookie);assert.equal(admin.data.products.length,31);
+
+ // New catalog management: images, automatic slugs, updates and safe category deletion.
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XmZkAAAAASUVORK5CYII=','base64');
+ const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'item.png');
+ const anonymousUpload=await fetch(base+'/api/admin/images',{method:'POST',body:form});
+ assert.equal(anonymousUpload.status,401,'Image uploads must require admin authentication');
+ const uploaded=await fetch(base+'/api/admin/images',{method:'POST',body:form,headers:{Cookie:cookie,Origin:'http://127.0.0.1:3218'}});
+ assert.equal(uploaded.status,201,'Authenticated admin image upload should succeed');
+ const imageBody=await uploaded.json();assert.match(imageBody.image_url,/^\/api\/images\/[a-f0-9]{24}$/);
+ const served=await fetch(base+imageBody.image_url);assert.equal(served.status,200);
+ assert.equal(served.headers.get('content-type'),'image/png');
+ assert.deepEqual(Buffer.from(await served.arrayBuffer()),png);
+ const forged=await fetch(base+'/api/admin/images',{method:'POST',body:form,headers:{Cookie:cookie,Origin:'https://untrusted.example'}});
+ assert.equal(forged.status,403,'Cross-origin image uploads must be rejected');
+ await expect('/api/admin','POST',{resource:'category',name:'Freshly Prepared Snacks',is_active:true,sort_order:20},200,cookie);
+ const newCategories=await expect('/api/admin','GET',undefined,200,cookie);
+ assert.ok(newCategories.data.categories.some(c=>c.id==='freshly-prepared-snacks'),'Category ID should generate from name');
+ await expect('/api/admin','POST',{resource:'product',name:'Integration Test Snack',description:'An automated test product',category_id:'freshly-prepared-snacks',price_cents:1299,unit_label:'5 pieces',image_url:imageBody.image_url,is_available:true,requires_preorder:false,preorder_notice_hours:12,is_vegetarian:true,sort_order:40},200,cookie);
+ const createdAdmin=await expect('/api/admin','GET',undefined,200,cookie);
+ const createdItem=createdAdmin.data.products.find(p=>p.slug==='integration-test-snack');
+ assert.ok(createdItem?.id,'Product slug should be auto-generated from name');
+ assert.equal(createdItem.image_url,imageBody.image_url);
+ await expect('/api/admin','DELETE',{resource:'category',category_id:'freshly-prepared-snacks'},409,cookie);
+ await expect('/api/admin','PATCH',{resource:'product',id:createdItem.id,name:'Updated Integration Snack',price_cents:1599},200,cookie);
+ const updatedItem=(await expect('/api/admin','GET',undefined,200,cookie)).data.products.find(p=>p.id===createdItem.id);
+ assert.equal(updatedItem.name,'Updated Integration Snack');
+ assert.equal(updatedItem.price_cents,1599);
+ assert.equal(updatedItem.slug,'integration-test-snack','Editing name must preserve order identifier');
+ await expect('/api/admin','DELETE',{resource:'product',id:createdItem.id},200,cookie);
+ assert.equal((await fetch(base+imageBody.image_url)).status,404,'Deleting a product removes its unreferenced photo');
+ await expect('/api/admin','DELETE',{resource:'category',category_id:'freshly-prepared-snacks'},200,cookie);
+
  await expect('/api/admin','POST',{resource:'category',category_id:'integration-seasonal',name:'Integration Seasonal',sort_order:99,is_active:true},200,cookie);
  await expect('/api/admin','PATCH',{resource:'category',category_id:'integration-seasonal',is_active:false},200,cookie);
  const withCategory=await expect('/api/admin','GET',undefined,200,cookie);
@@ -74,5 +106,5 @@ try{
  assert.ok(!currentStorefront.data.products.some(p=>p.id==='juwar-roti'),'Storefront must exclude unavailable products');
  await expect('/api/auth/logout','POST',{},200,cookie);
  await expect('/api/admin','GET',undefined,401);
- console.log('MongoDB integration passed: seed, login rate limiting, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, category management, live catalog synchronization and logout.');
+ console.log('MongoDB integration passed: seed, login rate limiting, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, category management, image uploads, automatic slugs, product edits/deletes, live catalog synchronization and logout.');
 }finally{if(child){child.kill('SIGTERM');await sleep(300)}try{await client.db(dbName).dropDatabase()}catch{}await client.close()}

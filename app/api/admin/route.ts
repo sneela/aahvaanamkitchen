@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Db } from 'mongodb';
 import { requireAdmin } from '@/lib/auth/session';
 import { mongoDb } from '@/lib/mongodb/client';
 import { defaultSettings, serialize, type ProductDoc, type OrderDoc, type SettingsDoc } from '@/lib/mongodb/models';
@@ -11,6 +11,15 @@ const payments = ['unpaid','paid','refunded'];
 const inquiryStatuses = ['new','contacted','closed'];
 const isId = (s: string) => /^[a-f0-9]{24}$/i.test(s);
 const slugFromName = (name: string, max = 100) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, max).replace(/-$/g, '');
+/** Remove previous image bytes only when no product still points to them. */
+async function cleanupProductPhoto(db: Db, url: string | null | undefined) {
+  if (!url || !/^\/api\/images\/[a-f0-9]{24}$/i.test(url)) return;
+  try {
+    if (!(await db.collection('products').findOne({ image_url: url }))) {
+      await db.collection('product_images').deleteOne({ _id: new ObjectId(url.slice(-24)) });
+    }
+  } catch (error) { console.error('Unable to clean up unused product image', error); }
+}
 export async function GET() {
   try {
     await requireAdmin();
@@ -114,14 +123,23 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
       if (method !== 'POST' && !isId(id)) return badRequest('Invalid product ID');
       const col = db.collection<ProductDoc>('products');
       if (method === 'DELETE') {
-        if (!(await col.deleteOne({ _id: new ObjectId(id) })).deletedCount) return badRequest('Product not found',404);
+        const previous = await col.findOneAndDelete({ _id: new ObjectId(id) });
+        if (!previous) return badRequest('Product not found',404);
+        await cleanupProductPhoto(db, previous.image_url);
       } else {
         data = productFields(b,method==='POST');
         if (!Object.keys(data).length) return badRequest('No changes');
         if (data.category_id && !(await db.collection('categories').findOne({ id: data.category_id }))) return badRequest('Unknown category',422);
         if (method === 'POST') await col.insertOne({ slug:'',name:'',description:'',category_id:null,price_cents:0,unit_label:'per order',
           image_url:null,is_available:true,requires_preorder:false,preorder_notice_hours:24,is_vegetarian:null,sort_order:100,...data } as ProductDoc);
-        else if (!(await col.updateOne({ _id: new ObjectId(id) }, { $set: data })).matchedCount) return badRequest('Product not found',404);
+        else {
+          const previous = await col.findOne({ _id: new ObjectId(id) });
+          if (!previous) return badRequest('Product not found',404);
+          await col.updateOne({ _id: new ObjectId(id) }, { $set: data });
+          if (data.image_url !== undefined && data.image_url !== previous.image_url) {
+            await cleanupProductPhoto(db, previous.image_url);
+          }
+        }
       }
     } else if (resource === 'category') {
       const categoryId = method === 'POST' && !b.category_id ? slugFromName(str(b.name, 80), 80) : str(b.category_id, 80);

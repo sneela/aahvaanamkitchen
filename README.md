@@ -1,5 +1,29 @@
 # Aahvaanam Kitchen — development branch
 
+## Local testing: catalog editor and photo uploads
+
+The new catalog-management features are developed separately on branch `feature/admin-catalog-image-uploads`. The active Netlify production branch is unchanged until you decide to merge/deploy. If Netlify branch-deploy previews are enabled, turn them off to avoid extra usage.
+
+```bash
+git fetch origin
+git switch feature/admin-catalog-image-uploads
+git pull
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
+
+Keep the same private `.env.local` values that worked locally. Sign in at `http://localhost:3000/admin/login`, then open **Menu** or **Categories**.
+
+- **Menu**: browse a horizontally scrollable table of all items, filter by name, edit any row, **Save** or **Cancel**, or delete with confirmation. Price inputs use US dollars; MongoDB continues to store integer cents. The add-item form creates a slug from the item name, so no slug field is required. Existing slugs stay unchanged when names are edited, protecting order references.
+- **Photos**: upload JPEG, PNG or WebP in the add-item form or while editing a row. The browser resizes the image to 1200px and converts it to compressed JPEG (max 1.5 MB). Authenticated `POST /api/admin/images` saves it in MongoDB collection `product_images`, then the product record stores only its `/api/images/{id}` URL. `GET /api/images/{id}` serves the image to storefront visitors. No external storage account or new environment variable is required. A photo upload is saved separately from the item: clicking Cancel leaves an unused stored photo. Avoid unnecessary uploads on the free Atlas tier.
+- **Categories**: create a new category using only the category name, change its display order and visibility, edit existing categories, and delete empty categories. Categories with linked products cannot be deleted.
+- **Security**: uploads require a valid administrator session and same-origin browser request; photo content and size are checked server-side. Website ordering remains disabled by default.
+
+The `npm run test:integration` test is **only for a disposable LOCAL MongoDB server** (never Atlas). It exercises upload authentication, product editing, and category operations. Avoid running this test against your live Atlas data. Ordinary manual testing through `npm run dev` against your configured Atlas database **does write to that database** when you save items, images, or categories.
+
+
 Responsive Next.js 15 / React 19 storefront and MongoDB Atlas backend for `aahvaanamkitchen.com`. **A Netlify deployment was reported by the owner on October 30, 2026, but live Atlas connectivity, administrator login, and production readiness have not been independently verified.**
 
 The site has the Aahvaanam temple-inspired logo (optimized web image), a 31-item sample menu, responsive product catalog, cart and checkout request, WhatsApp fallback, catering form, review moderation, published specials, and a protected kitchen dashboard with category management. The printable menu at `/catalog` reads current available items and prices from MongoDB when connected, shows a clearly marked sample when offline, and does not silently show stale prices if the database is unavailable. The original flyer PDF is a static reference and may differ from live pricing. The source repository includes the optimized approved logo and printable catalog PDF; full-resolution branding source images are bundled separately in the development ZIP. Product photos are illustrative external placeholders; replace with photos you have rights to before launch.

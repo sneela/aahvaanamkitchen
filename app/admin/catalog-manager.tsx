@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent, type Dispatch, type SetStateAction } from 'react';
 
 export type CatalogRow = { id: string; name?: string; slug?: string; description?: string; category_id?: string | null; price_cents?: number; unit_label?: string; image_url?: string | null; is_available?: boolean; requires_preorder?: boolean; preorder_notice_hours?: number; is_vegetarian?: boolean | null; sort_order?: number; };
 export type CategoryRow = { id: string; name: string; is_active: boolean; sort_order: number };
@@ -31,14 +31,14 @@ async function prepareImage(file: File): Promise<File> {
   } finally { bitmap.close(); }
 }
 
-function ImagePicker({ value, onChange, disabled }: { value: string | null | undefined; onChange: (value: string | null) => void; disabled?: boolean }) {
+function ImagePicker({ value, onChange, disabled, onBusyChange }: { value: string | null | undefined; onChange: (value: string | null) => void; disabled?: boolean; onBusyChange?: (busy: boolean) => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const choose = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setUploading(true); setError('');
+    setUploading(true); onBusyChange?.(true); setError('');
     try {
       const compressed = await prepareImage(file);
       const form = new FormData();
@@ -48,7 +48,7 @@ function ImagePicker({ value, onChange, disabled }: { value: string | null | und
       if (!response.ok || !result.image_url) throw new Error(result.error || 'Image upload failed.');
       onChange(result.image_url);
     } catch (e) { setError(e instanceof Error ? e.message : 'Image upload failed.'); }
-    finally { setUploading(false); }
+    finally { setUploading(false); onBusyChange?.(false); }
   };
   return <div className="admin-photo-editor">
     {value ? <img className="admin-photo-preview" src={value} alt="Menu product preview" /> : <div className="admin-photo-placeholder">No image</div>}
@@ -69,8 +69,8 @@ function PriceInput({ cents, onChange, disabled, form }: { cents: number; onChan
     onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); setTyped(dollars(cents)); }} />;
 }
 
-function ProductFields({ v, setV, categories, prefix, busy }: { v: CatalogRow; setV: (data: CatalogRow) => void; categories: CategoryRow[]; prefix: string; busy: boolean }) {
-  const field = <K extends keyof CatalogRow>(key: K, value: CatalogRow[K]) => setV({ ...v, [key]: value });
+function ProductFields({ v, setV, categories, prefix, busy, onUploadState }: { v: CatalogRow; setV: Dispatch<SetStateAction<CatalogRow>>; categories: CategoryRow[]; prefix: string; busy: boolean; onUploadState: (busy: boolean) => void }) {
+  const field = <K extends keyof CatalogRow>(key: K, value: CatalogRow[K]) => setV(previous => ({ ...previous, [key]: value }));
   return <>
     <label>Item name<input required maxLength={120} value={v.name || ''} disabled={busy} onChange={e => field('name', e.target.value)} /></label>
     <label>Category<select value={v.category_id || ''} disabled={busy} onChange={e => field('category_id', e.target.value || null)}><option value="">Other / Unassigned</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}{c.is_active ? '' : ' (inactive)'}</option>)}</select></label>
@@ -80,7 +80,7 @@ function ProductFields({ v, setV, categories, prefix, busy }: { v: CatalogRow; s
     <label>Display order<input type="number" min="-100000" max="100000" value={v.sort_order ?? 100} disabled={busy} onChange={e => field('sort_order', Number(e.target.value))} /></label>
     <label>Dietary<select value={v.is_vegetarian === null || v.is_vegetarian === undefined ? 'unknown' : v.is_vegetarian ? 'vegetarian' : 'nonvegetarian'} disabled={busy} onChange={e => field('is_vegetarian', e.target.value === 'unknown' ? null : e.target.value === 'vegetarian')}><option value="unknown">Not specified</option><option value="vegetarian">Vegetarian</option><option value="nonvegetarian">Non-vegetarian</option></select></label>
     <label className="wide">Description<textarea maxLength={1000} value={v.description || ''} disabled={busy} onChange={e => field('description', e.target.value)} /></label>
-    <div className="wide"><span className="admin-field-label">Product photo</span><ImagePicker value={v.image_url} disabled={busy} onChange={url => field('image_url', url)} /></div>
+    <div className="wide"><span className="admin-field-label">Product photo</span><ImagePicker value={v.image_url} disabled={busy} onBusyChange={onUploadState} onChange={url => field('image_url', url)} /></div>
     <label className="admin-check"><input type="checkbox" checked={Boolean(v.is_available)} disabled={busy} onChange={e => field('is_available', e.target.checked)} /> Available</label>
     <label className="admin-check"><input type="checkbox" checked={Boolean(v.requires_preorder)} disabled={busy} onChange={e => field('requires_preorder', e.target.checked)} /> Requires pre-order</label>
     <p className="wide admin-hint">Slug (internal ID): <code>{v.id ? v.slug : (slug(v.name || '') || 'generated-from-name')}</code>. Automatically created from the name; it is not required when adding an item. {prefix === 'new' ? '' : 'It remains unchanged when you rename the item.'}</p>
@@ -100,12 +100,14 @@ function productPayload(v: CatalogRow): Record<string, unknown> {
 
 function ProductTableRow({ product, categories, busy, save }: { product: CatalogRow; categories: CategoryRow[]; busy: boolean; save: Save }) {
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<CatalogRow>({ ...product });
   useEffect(() => { if (!editing) setDraft({ ...product }); }, [product, editing]);
   const edit = () => { setDraft({ ...product }); setEditing(true); };
   const cancel = () => { setDraft({ ...product }); setEditing(false); };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (uploading) return;
     if (await save('PATCH', { ...productPayload(draft), id: product.id })) setEditing(false);
   };
   const remove = async () => {
@@ -114,7 +116,7 @@ function ProductTableRow({ product, categories, busy, save }: { product: Catalog
   };
   const category = categories.find(c => c.id === product.category_id);
   return <tr className={editing ? 'admin-editing-row' : ''}>
-    <td>{(editing ? draft.image_url : product.image_url) ? <img className="admin-table-thumbnail" src={(editing ? draft.image_url : product.image_url) || undefined} alt={product.name || 'Product'} /> : <span className="admin-no-photo">No photo</span>}{editing && <ImagePicker value={draft.image_url} onChange={image_url => setDraft({ ...draft, image_url })} disabled={busy} />}</td>
+    <td>{(editing ? draft.image_url : product.image_url) ? <img className="admin-table-thumbnail" src={(editing ? draft.image_url : product.image_url) || undefined} alt={product.name || 'Product'} /> : <span className="admin-no-photo">No photo</span>}{editing && <ImagePicker value={draft.image_url} onBusyChange={setUploading} onChange={image_url => setDraft(d => ({ ...d, image_url }))} disabled={busy} />}</td>
     <td>{editing ? <input form={'edit-' + product.id} required maxLength={120} aria-label="Item name" value={draft.name || ''} onChange={e => setDraft({ ...draft, name: e.target.value })} disabled={busy} /> : <strong>{product.name}</strong>}</td>
     <td><small title={product.id}>{product.slug}</small></td>
     <td>{editing ? <select form={'edit-' + product.id} aria-label="Category" disabled={busy} value={draft.category_id || ''} onChange={e => setDraft({ ...draft, category_id: e.target.value || null })}><option value="">Other</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select> : (category?.name || 'Other')}</td>
@@ -128,8 +130,8 @@ function ProductTableRow({ product, categories, busy, save }: { product: Catalog
     <td>{editing ? <input form={'edit-' + product.id} type="number" min="-100000" max="100000" aria-label="Sort order" value={draft.sort_order ?? 100} onChange={e => setDraft({ ...draft, sort_order: Number(e.target.value) })} disabled={busy} /> : product.sort_order}</td>
     <td>
       <form id={'edit-' + product.id} onSubmit={e => void submit(e)} className="admin-table-actions">
-        {editing ? <><button className="primary" disabled={busy} type="submit">Save</button><button className="admin-action" disabled={busy} type="button" onClick={cancel}>Cancel</button></> : <button className="admin-action" disabled={busy} type="button" onClick={edit}>Edit</button>}
-        <button type="button" className="danger" disabled={busy} onClick={() => void remove()}>Delete</button>
+        {editing ? <><button className="primary" disabled={busy || uploading} type="submit">Save</button><button className="admin-action" disabled={busy || uploading} type="button" onClick={cancel}>Cancel</button></> : <button className="admin-action" disabled={busy} type="button" onClick={edit}>Edit</button>}
+        <button type="button" className="danger" disabled={busy || uploading} onClick={() => void remove()}>Delete</button>
       </form>
     </td>
   </tr>;
@@ -138,15 +140,17 @@ function ProductTableRow({ product, categories, busy, save }: { product: Catalog
 export function CatalogManager({ products, categories, busy, save }: { products: CatalogRow[]; categories: CategoryRow[]; busy: boolean; save: Save }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState<CatalogRow>(emptyProduct);
+  const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState('');
   const matching = products.filter(p => (p.name + ' ' + p.slug + ' ' + p.description).toLowerCase().includes(filter.toLowerCase()));
   const create = async (e: FormEvent) => {
     e.preventDefault();
+    if (uploading) return;
     if (await save('POST', productPayload(newItem))) { setNewItem(emptyProduct()); setShowAdd(false); }
   };
   return <section className="admin-catalog">
     <div className="admin-section-heading"><div><h2>Menu items</h2><p>All items and settings are listed below. Scroll horizontally to see every column.</p></div><button className="primary" type="button" onClick={() => setShowAdd(v => !v)}>{showAdd ? 'Close add form' : '+ Add menu item'}</button></div>
-    {showAdd && <article className="admin-card admin-new-product"><h3>Add a new menu item</h3><form onSubmit={e => void create(e)}><ProductFields v={newItem} setV={setNewItem} categories={categories} prefix="new" busy={busy} /><div className="wide"><button type="submit" className="primary" disabled={busy}>Save new item</button><button type="button" className="admin-action" onClick={() => { setShowAdd(false); setNewItem(emptyProduct()); }} disabled={busy}>Cancel</button></div></form></article>}
+    {showAdd && <article className="admin-card admin-new-product"><h3>Add a new menu item</h3><form onSubmit={e => void create(e)}><ProductFields v={newItem} setV={setNewItem} categories={categories} prefix="new" busy={busy} onUploadState={setUploading} /><div className="wide"><button type="submit" className="primary" disabled={busy || uploading}>Save new item</button><button type="button" className="admin-action" onClick={() => { setShowAdd(false); setNewItem(emptyProduct()); }} disabled={busy || uploading}>Cancel</button></div></form></article>}
     <div className="admin-table-tools"><label>Search menu<input type="search" placeholder="Search by name, description, or slug" value={filter} onChange={e => setFilter(e.target.value)} /></label><span>{matching.length} of {products.length} items</span></div>
     <div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{['Photo','Item name','Slug','Category','Price','Unit','Description','Available','Pre-order','Notice hrs','Dietary','Sort','Actions'].map(h => <th key={h} scope="col">{h}</th>)}</tr></thead><tbody>{matching.map(p => <ProductTableRow key={p.id} product={p} categories={categories} busy={busy} save={save} />)}{!matching.length && <tr><td colSpan={13}>No matching menu items.</td></tr>}</tbody></table></div>
   </section>;

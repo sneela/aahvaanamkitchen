@@ -1,7 +1,7 @@
 name: Aahvaanam quality checks
 on:
   push:
-    branches: [feature/mongodb-free-tier]
+    branches: [feature/mongodb-free-tier, feature/admin-catalog-image-uploads]
   pull_request:
     branches: [main]
 permissions:
