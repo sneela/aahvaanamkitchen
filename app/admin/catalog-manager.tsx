@@ -60,12 +60,20 @@ function ImagePicker({ value, onChange, disabled }: { value: string | null | und
   </div>;
 }
 
+function PriceInput({ cents, onChange, disabled, form }: { cents: number; onChange: (next: number) => void; disabled?: boolean; form?: string }) {
+  const [typed, setTyped] = useState(dollars(cents));
+  useEffect(() => { setTyped(dollars(cents)); }, [cents]);
+  return <input form={form} aria-label="Price in dollars" type="number" min="0" max="10000" step="0.01" required disabled={disabled} value={typed}
+    onChange={event => { const next = event.target.value; setTyped(next); if (next !== '' && Number.isFinite(Number(next))) onChange(Math.round(Number(next) * 100)); }}
+    onBlur={() => setTyped(dollars(cents))} />;
+}
+
 function ProductFields({ v, setV, categories, prefix, busy }: { v: CatalogRow; setV: (data: CatalogRow) => void; categories: CategoryRow[]; prefix: string; busy: boolean }) {
   const field = <K extends keyof CatalogRow>(key: K, value: CatalogRow[K]) => setV({ ...v, [key]: value });
   return <>
     <label>Item name<input required maxLength={120} value={v.name || ''} disabled={busy} onChange={e => field('name', e.target.value)} /></label>
     <label>Category<select value={v.category_id || ''} disabled={busy} onChange={e => field('category_id', e.target.value || null)}><option value="">Other / Unassigned</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}{c.is_active ? '' : ' (inactive)'}</option>)}</select></label>
-    <label>Price ($)<input type="number" step="0.01" min="0" max="10000" required disabled={busy} value={dollars(v.price_cents || 0)} onChange={e => field('price_cents', Math.round(Number(e.target.value) * 100))} /></label>
+    <label>Price ($)<PriceInput cents={v.price_cents || 0} disabled={busy} onChange={next => field('price_cents', next)} /></label>
     <label>Unit / quantity<input required maxLength={100} value={v.unit_label || ''} disabled={busy} onChange={e => field('unit_label', e.target.value)} /></label>
     <label>Pre-order notice (hours)<input type="number" min="0" max="720" value={v.preorder_notice_hours ?? 24} disabled={busy} onChange={e => field('preorder_notice_hours', Number(e.target.value))} /></label>
     <label>Display order<input type="number" min="-100000" max="100000" value={v.sort_order ?? 100} disabled={busy} onChange={e => field('sort_order', Number(e.target.value))} /></label>
@@ -105,11 +113,11 @@ function ProductTableRow({ product, categories, busy, save }: { product: Catalog
   };
   const category = categories.find(c => c.id === product.category_id);
   return <tr className={editing ? 'admin-editing-row' : ''}>
-    <td>{product.image_url ? <img className="admin-table-thumbnail" src={editing ? (draft.image_url || undefined) : product.image_url} alt={product.name || 'Product'} /> : <span className="admin-no-photo">No photo</span>}{editing && <ImagePicker value={draft.image_url} onChange={image_url => setDraft({ ...draft, image_url })} disabled={busy} />}</td>
+    <td>{(editing ? draft.image_url : product.image_url) ? <img className="admin-table-thumbnail" src={(editing ? draft.image_url : product.image_url) || undefined} alt={product.name || 'Product'} /> : <span className="admin-no-photo">No photo</span>}{editing && <ImagePicker value={draft.image_url} onChange={image_url => setDraft({ ...draft, image_url })} disabled={busy} />}</td>
     <td>{editing ? <input form={'edit-' + product.id} required maxLength={120} aria-label="Item name" value={draft.name || ''} onChange={e => setDraft({ ...draft, name: e.target.value })} disabled={busy} /> : <strong>{product.name}</strong>}</td>
     <td><small title={product.id}>{product.slug}</small></td>
     <td>{editing ? <select form={'edit-' + product.id} aria-label="Category" disabled={busy} value={draft.category_id || ''} onChange={e => setDraft({ ...draft, category_id: e.target.value || null })}><option value="">Other</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select> : (category?.name || 'Other')}</td>
-    <td>{editing ? <input form={'edit-' + product.id} aria-label="Price in dollars" type="number" min="0" max="10000" step="0.01" value={dollars(draft.price_cents || 0)} onChange={e => setDraft({ ...draft, price_cents: Math.round(Number(e.target.value) * 100) })} disabled={busy} /> : '$' + dollars(product.price_cents || 0)}</td>
+    <td>{editing ? <PriceInput form={'edit-' + product.id} cents={draft.price_cents || 0} onChange={next => setDraft({ ...draft, price_cents: next })} disabled={busy} /> : '$' + dollars(product.price_cents || 0)}</td>
     <td>{editing ? <input form={'edit-' + product.id} maxLength={100} aria-label="Unit" value={draft.unit_label || ''} onChange={e => setDraft({ ...draft, unit_label: e.target.value })} disabled={busy} /> : product.unit_label}</td>
     <td>{editing ? <textarea form={'edit-' + product.id} maxLength={1000} aria-label="Description" value={draft.description || ''} onChange={e => setDraft({ ...draft, description: e.target.value })} disabled={busy} /> : <span title={product.description || ''}>{product.description || '—'}</span>}</td>
     <td>{editing ? <input form={'edit-' + product.id} aria-label="Available" type="checkbox" checked={Boolean(draft.is_available)} onChange={e => setDraft({ ...draft, is_available: e.target.checked })} disabled={busy} /> : product.is_available ? 'Yes' : 'No'}</td>
