@@ -6,7 +6,7 @@ const menu = JSON.parse(read('scripts/seed-menu.json'));
 assert.equal(menu.length, 31, 'Original starter catalog should contain 31 items');
 assert.equal(new Set(menu.map(i => i.id)).size, menu.length, 'Unique menu slugs');
 for (const file of [
-  'public/images/aahvaanam-logo.jpg','app/catalog/page.tsx',
+  'public/images/aahvaanam-correct-wordmark.webp','app/catalog/page.tsx',
   'app/page.tsx','app/globals.css','app/admin/page.tsx','app/admin/login/page.tsx','app/admin/dashboard.tsx',
   'app/api/storefront/route.ts','app/api/orders/route.ts','app/api/reviews/route.ts','app/api/catering/route.ts',
   'app/api/admin/route.ts','app/api/auth/login/route.ts','app/api/auth/logout/route.ts',
@@ -19,4 +19,7 @@ for (const path of ['app/admin/dashboard.tsx','app/admin/login/page.tsx','app/ap
 assert.ok(read('app/api/admin/route.ts').includes('await requireAdmin()'), 'Admin API must authenticate');
 assert.ok(read('app/api/orders/route.ts').includes('price_cents'), 'Order prices computed from DB');
 assert.ok(!/^MONGODB_URI=\S+/m.test(read('.env.example')), 'No secret in example env');
+for (const path of ['app/page.tsx','app/admin/dashboard.tsx','app/admin/login/page.tsx','app/catalog/page.tsx','app/api/storefront/route.ts']) {
+  assert.ok(!read(path).includes('/images/aahvaanam-logo.jpg'), `Outdated logo reference in ${path}`);
+}
 console.log(`Source checks passed: ${menu.length} items, assets, MongoDB APIs, authenticated admin.`);
