@@ -1,8 +1,10 @@
 # Aahvaanam Kitchen — development branch
 
-Responsive Next.js 15 / React 19 storefront and MongoDB Atlas backend for `aahvaanamkitchen.com`. **Not deployed, not production-ready, and not connected to a live Atlas database.**
+Responsive Next.js 15 / React 19 storefront and MongoDB Atlas backend for `aahvaanamkitchen.com`. **A Netlify deployment was reported by the owner on October 30, 2026, but live Atlas connectivity, administrator login, and production readiness have not been independently verified.**
 
-The site has the Aahvaanam temple-inspired logo (optimized web image), a 31-item sample menu, responsive product catalog, cart and checkout request, WhatsApp fallback, catering form, review moderation, published specials, and a protected kitchen dashboard with category management. The printable menu at `/catalog` reads current available items and prices from MongoDB when connected, shows a clearly marked sample when offline, and does not silently show stale prices if the database is unavailable. The original flyer PDF is a static reference and may differ from live pricing. The full-resolution original logo and original catalog PDF are included in the separate development ZIP, not yet committed to this branch. Product photos are illustrative external placeholders; replace with photos you have rights to before launch.
+The site has the Aahvaanam temple-inspired logo (optimized web image), a 31-item sample menu, responsive product catalog, cart and checkout request, WhatsApp fallback, catering form, review moderation, published specials, and a protected kitchen dashboard with category management. The printable menu at `/catalog` reads current available items and prices from MongoDB when connected, shows a clearly marked sample when offline, and does not silently show stale prices if the database is unavailable. The original flyer PDF is a static reference and may differ from live pricing. The source repository includes the optimized approved logo and printable catalog PDF; full-resolution branding source images are bundled separately in the development ZIP. Product photos are illustrative external placeholders; replace with photos you have rights to before launch.
+
+**New:** Follow [NETLIFY-ATLAS-SETUP.md](NETLIFY-ATLAS-SETUP.md) for the exact five Netlify variables, Atlas access, safe local seeding commands, and launch checklist. The owner-supplied official wordmark is committed at `public/images/aahvaanam-correct-wordmark.webp` and used throughout the storefront and admin.
 
 ## Local setup
 
