@@ -1,0 +1,58 @@
+name: Aahvaanam quality checks
+on:
+  push:
+    branches: [feature/mongodb-free-tier]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand({ping:1}).ok\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package.json
+      - run: npm install --no-audit --no-fund
+      - run: npm run verify:source
+      - run: npm run audit:launch
+      - run: npm run test:logic
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      - run: npm run smoke:offline
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke:browser
+      - run: npm run test:integration
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aahvaanam-browser-screenshots
+          path: artifacts/screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Package source ZIP
+        run: zip -qr aahvaanam-kitchen-source.zip . -x '.git/*' 'node_modules/*' '.next/*' '.env.local' '.env.*.local' 'aahvaanam-kitchen-source.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aahvaanam-kitchen-source
+          path: aahvaanam-kitchen-source.zip
+          retention-days: 30
