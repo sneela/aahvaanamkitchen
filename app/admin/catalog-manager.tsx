@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent, type Dispatch, type SetStateAction } from 'react';
 
 export type CatalogRow = { id: string; name?: string; slug?: string; description?: string; category_id?: string | null; price_cents?: number; unit_label?: string; image_url?: string | null; is_available?: boolean; requires_preorder?: boolean; preorder_notice_hours?: number; is_vegetarian?: boolean | null; sort_order?: number; };
 export type CategoryRow = { id: string; name: string; is_active: boolean; sort_order: number };
@@ -69,8 +69,8 @@ function PriceInput({ cents, onChange, disabled, form }: { cents: number; onChan
     onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); setTyped(dollars(cents)); }} />;
 }
 
-function ProductFields({ v, setV, categories, prefix, busy, onUploadState }: { v: CatalogRow; setV: (data: CatalogRow) => void; categories: CategoryRow[]; prefix: string; busy: boolean; onUploadState: (busy: boolean) => void }) {
-  const field = <K extends keyof CatalogRow>(key: K, value: CatalogRow[K]) => setV({ ...v, [key]: value });
+function ProductFields({ v, setV, categories, prefix, busy, onUploadState }: { v: CatalogRow; setV: Dispatch<SetStateAction<CatalogRow>>; categories: CategoryRow[]; prefix: string; busy: boolean; onUploadState: (busy: boolean) => void }) {
+  const field = <K extends keyof CatalogRow>(key: K, value: CatalogRow[K]) => setV(previous => ({ ...previous, [key]: value }));
   return <>
     <label>Item name<input required maxLength={120} value={v.name || ''} disabled={busy} onChange={e => field('name', e.target.value)} /></label>
     <label>Category<select value={v.category_id || ''} disabled={busy} onChange={e => field('category_id', e.target.value || null)}><option value="">Other / Unassigned</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}{c.is_active ? '' : ' (inactive)'}</option>)}</select></label>
