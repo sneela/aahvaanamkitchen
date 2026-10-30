@@ -2,9 +2,9 @@
 
 Project: `aahvaanamkitchen` · Cluster: `Cluster0` · Database: `aahvaanam_kitchen` (AWS us-east-1 M0).
 
-This feature branch now contains the responsive storefront, menu, cart, pending-order checkout, optimized original emblem, printable catalog, administrator dashboard, catering, review moderation, specials, delivery settings, MongoDB schema/indexes/seed, and GitHub Actions quality checks.
+This feature branch now contains the responsive storefront, menu, cart, pending-order checkout, approved Aahvaanam wordmark and favicon, printable catalog, administrator dashboard, catering, review moderation, specials, delivery settings, MongoDB schema/indexes/seed, and GitHub Actions quality checks.
 
-**Not yet live or approved for production.** The source has passed a Next.js production build and TypeScript checks in GitHub Actions. The workflow also tests offline routes and, when successful, a temporary local MongoDB service. This does **not** prove that the private Atlas Cluster0 credentials/network access work or that production hosting has been configured.
+**Owner-reported Netlify deployment (October 30, 2026); not approved for production.** The source has passed a Next.js production build and TypeScript checks in GitHub Actions. The workflow also tests offline routes and, when successful, a temporary local MongoDB service. This does **not** prove private Atlas connectivity, Netlify runtime environment variables, administrator sign-in, or production readiness.
 
 ## Private Atlas setup
 
@@ -17,10 +17,12 @@ This feature branch now contains the responsive storefront, menu, cart, pending-
 
 ## Known gaps
 
-- Live Atlas and hosting deployment have not been verified; no production URL is claimed.
-- The original full-resolution logo and original catalog PDF remain in the separate development ZIP. GitHub includes a small optimized version of the emblem and a generated printable menu PDF.
+- The owner reports https://aahvaanamkitchen.netlify.app is reachable. Live Atlas, admin sign-in, and custom-domain DNS remain unverified.
+- The approved wordmark and icon are committed as optimized WebP assets. Full-resolution source branding images are bundled in the development ZIP. The repository includes a generated printable menu PDF.
 - Food photos are illustrative third-party placeholders; replace with authorized photos before launch.
 - Customer email/SMS notifications, online payments, automatic delivery coverage calculations and automated refunds are intentionally not implemented.
 - Confirm Ohio food-business licensing, privacy/retention policy, service-area rules and operational readiness before enabling orders.
 
 See [README.md](README.md) for detailed setup and Google Sites linking instructions.
+
+For current Netlify environment setup and safe seeding commands, see [NETLIFY-ATLAS-SETUP.md](NETLIFY-ATLAS-SETUP.md).

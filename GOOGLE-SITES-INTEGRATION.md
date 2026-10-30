@@ -1,10 +1,10 @@
 # Google Sites and Netlify connection guide
 
-**Status:** This is a deployment plan, not evidence that hosting or MongoDB Atlas has been connected. Keep `ordering_enabled=false` until private verification and applicable food-business requirements are complete.
+**Status (October 30, 2026):** The owner reports a reachable Netlify URL at https://aahvaanamkitchen.netlify.app, but live Atlas, administrator sign-in, and custom-domain DNS have not been independently verified. Keep `ordering_enabled=false` until private verification and applicable food-business requirements are complete.
 
 ## Recommended setup
 
-- **Storefront and checkout:** Next.js application on Netlify, using server-side API routes and MongoDB Atlas. Start on a Netlify-generated preview URL.
+- **Storefront and checkout:** Next.js application on Netlify, using server-side API routes and MongoDB Atlas. Use the owner-reported Netlify URL for testing before connecting the custom domain.
 - **Existing Google Sites page (optional):** A landing page with buttons to the Next.js storefront, current menu, catering and WhatsApp.
 - **Domain:** If you control `aahvaanamkitchen.com`, point it to the deployed Next.js site only after testing. Do not change existing DNS or email records without checking their current values.
 
@@ -14,7 +14,7 @@ Google Sites cannot host Next.js route handlers, server-side authentication, or 
 
 1. In Netlify, import GitHub repository `sneela/aahvaanamkitchen`. Choose `feature/mongodb-free-tier` for a preview. Confirm the Netlify Next.js runtime supports the App Router and Node.js API routes.
 2. Configure `MONGODB_URI`, `MONGODB_DB_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` as **private server-side environment variables** in Netlify. Generate hashes/secrets locally; never commit them.
-3. Run the Atlas indexes/seed and private connectivity check as described in [README.md](README.md). Verify the preview website, order requests, administrator login/logout, pricing, delivery, catering, reviews, and specials using test data.
+3. Run the Atlas indexes/seed and private connectivity check as described in [NETLIFY-ATLAS-SETUP.md](NETLIFY-ATLAS-SETUP.md). Verify the preview website, order requests, administrator login/logout, pricing, delivery, catering, reviews, and specials using test data.
 4. Confirm that the preview site is HTTPS and that `/admin` and `/api/admin` reject unauthenticated requests. Check the privacy notice and business licensing before taking real orders.
 5. In Google Sites, choose **Insert → Button**, enter a label such as **Order / Browse menu**, and link to the verified Netlify storefront URL. Add separate buttons for `/catalog` and `/#catering` if desired. Publish the Google Site.
 6. **Do not embed the admin dashboard in an iframe.** Linking to the hosted storefront is more reliable than embedding checkout in Google Sites, especially with cookie and cross-origin restrictions.
