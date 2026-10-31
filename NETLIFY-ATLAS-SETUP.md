@@ -66,3 +66,17 @@ If a local connection fails, check the Atlas database user's password, network a
 The site can remain at its `*.netlify.app` address until ready. To connect `aahvaanamkitchen.com`, either retain Namecheap DNS and use the records **Netlify displays for your project**, or switch the domain's nameservers to Netlify DNS. Preserve any existing MX/TXT records for email. Netlify DNS and managed HTTPS certificates do not require a separate DNS subscription on the Free plan; free hosting and Atlas M0 have usage limits. Domain renewal at Namecheap is separate.
 
 Official docs: [Netlify Next.js](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/), [Netlify external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/), [Atlas connection](https://www.mongodb.com/docs/atlas/connect-to-database-deployment/).
+
+## 7. Troubleshooting: “Invalid email or password” after a successful deploy
+
+A `401` from `POST /api/auth/login` means the function is running but the credentials do not match. It does **not** mean Atlas is unreachable. The login checks `ADMIN_EMAIL` and a scrypt hash in `ADMIN_PASSWORD_HASH`; it does not use your Atlas website password.
+
+If you have already regenerated the hash and redeployed, temporarily add `AUTH_LOGIN_DIAGNOSTICS=1` as a Netlify **Functions** environment variable for the same deploy context as the website, then deploy once. Attempt **one** login and inspect **Netlify → Logs → Functions** for `Admin login denied`. The server-only reason will be one of:
+
+- `hash_format_invalid`: the configured hash is not exactly a hex salt, colon, and 128 hex characters. Paste only the value after `ADMIN_PASSWORD_HASH=` (no variable name or quotes). The generator currently uses a 64-character salt and 128-character derived hash.
+- `password_mismatch`: the password entered does not match the configured hash. Generate a new hash locally and redeploy with the new value; use the **password**, not the hash, on the sign-in form.
+- `email_mismatch`: the password matched, but the submitted email differs from `ADMIN_EMAIL` in the deployed function. Check the exact address and deploy context.
+  
+The browser always receives the same generic `401` response. **Do not share the function's environment values, request body, cookies, or credentials.** After diagnosing the problem, delete `AUTH_LOGIN_DIAGNOSTICS` or set it to `0` and redeploy. Netlify secret values may be masked in the dashboard but are still available to properly scoped server functions. If there is no `Admin login denied` entry, confirm that the request reached the expected production deploy and wasn't rejected earlier by rate limiting (`429`) or missing configuration (`503`).
+
+This diagnostic never verifies a live deployment automatically. The operator must check the private Netlify logs and test login.

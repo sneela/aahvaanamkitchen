@@ -7,7 +7,7 @@ const localUri=/^mongodb:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|\?|$)/;
 if (!process.env.MONGODB_URI || !localUri.test(process.env.MONGODB_URI)) throw Error('This test is restricted to a local MongoDB instance only');
 const dbName='aahvaanam_ci_'+Date.now(),password='IntegrationOnly-'+randomUUID();
 const salt=randomBytes(16).toString('hex'),hash=scryptSync(password,Buffer.from(salt,'hex'),64).toString('hex');
-const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:salt+':'+hash,SESSION_SECRET:randomBytes(40).toString('hex')};
+const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:'  '+salt+':'+hash+' \n',SESSION_SECRET:randomBytes(40).toString('hex')};
 const client=new MongoClient(env.MONGODB_URI,{serverSelectionTimeoutMS:5000});
 let child,logs='';
 const base='http://127.0.0.1:3218';

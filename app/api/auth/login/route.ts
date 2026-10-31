@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { authConfigured, COOKIE, createSession, sessionCookieOptions, verifyPassword } from '@/lib/auth/session';
+import { authConfigured, checkAdminCredentials, COOKIE, createSession, sessionCookieOptions } from '@/lib/auth/session';
 import { jsonError, parseBody, str, AccessError } from '@/lib/api';
 import { mongoConfigured } from '@/lib/mongodb/client';
 import { rateLimit } from '@/lib/mongodb/limits';
@@ -10,7 +10,12 @@ export async function POST(request: NextRequest) {
     await rateLimit(request, 'admin-login', 5, 15);
     const b = await parseBody(request, 2500);
     const email = str(b.email, 200), password = str(b.password, 256);
-    if (!email || !password || !verifyPassword(email, password)) throw new AccessError(401, 'Invalid email or password');
+    const credentialCheck = email && password ? checkAdminCredentials(email, password) : 'password_mismatch';
+    if (credentialCheck !== 'ok') {
+      // Opt-in, server-side-only troubleshooting; never log email, password, hash or secret.
+      if (process.env.AUTH_LOGIN_DIAGNOSTICS === '1') console.warn('Admin login denied', { reason: credentialCheck });
+      throw new AccessError(401, 'Invalid email or password');
+    }
     const response = NextResponse.json({ ok: true });
     response.cookies.set(COOKIE, createSession(process.env.ADMIN_EMAIL!), sessionCookieOptions);
     response.headers.set('Cache-Control', 'no-store');
