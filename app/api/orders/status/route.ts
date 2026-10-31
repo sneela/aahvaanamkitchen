@@ -7,7 +7,10 @@ import { rateLimit } from '@/lib/mongodb/limits';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const digits = (phone: string) => phone.replace(/\D/g, '');
+const digits = (phone: string) => {
+  const all = phone.replace(/\D/g, '');
+  return all.length === 11 && all.startsWith('1') ? all.slice(1) : all;
+};
 
 export async function POST(request: NextRequest) {
   try {
