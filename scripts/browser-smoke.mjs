@@ -30,6 +30,13 @@ try {
   const desktop = await pageFor({ width: 1440, height: 900 });
   await desktop.goto(base, { waitUntil: 'domcontentloaded' });
   await desktop.locator('.product').first().waitFor();
+
+  await desktop.locator('.product').first().getByRole('button', { name: 'View details' }).click();
+  const details=desktop.getByRole('dialog');
+  assert.ok(await details.getByRole('heading',{name:'Jowar Roti'}).isVisible(),'Customers can inspect item details');
+  await details.getByRole('button',{name:'Close item details'}).click();
+  assert.equal(await desktop.getByRole('dialog').count(),0,'Closing product details returns to the storefront');
+
   assert.equal(await desktop.locator('.product').count(), 31, 'Sample storefront should display the 31 seeded menu choices');
   await desktop.getByRole('button', { name: 'Add Jowar Roti to cart' }).click();
   await desktop.getByRole('button', { name: 'Cart (1)' }).click();
