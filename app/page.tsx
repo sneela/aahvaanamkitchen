@@ -20,7 +20,6 @@ export default function Home(){
  const [catering,setCatering]=useState({name:'',phone:'',date:'',guests:'',message:'',website:''}),[review,setReview]=useState({name:'',rating:5,review:'',website:''}),[cateringStatus,setCateringStatus]=useState(''),[reviewStatus,setReviewStatus]=useState('');
  const requestId=useRef<{key:string;id:string}|null>(null);
  useEffect(()=>{let active=true;fetch('/api/storefront',{cache:'no-store'}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Menu unavailable');return j}).then(j=>{if(!active)return;setCatalog(j.products);setSettings(j.settings);setConnected(j.connected);setSpecials(j.specials||[]);setReviews(j.reviews||[]);setAnnouncements(j.announcements||[])}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoaded(true)});return()=>{active=false}},[]);
- useEffect(()=>{if(loaded&&connected&&settings.analyticsEnabled)recordActivity('visit',undefined,true);},[loaded,connected,settings.analyticsEnabled]);
  const openDetail=(product:MenuWithOrders)=>{setDetail(product);if(connected&&settings.analyticsEnabled)recordActivity('product_view',product.id,true);};
  const categories=useMemo(()=>['All',...new Set(catalog.map(p=>p.category))],[catalog]);
  const shown=catalog.filter(p=>category==='All'||p.category===category);
