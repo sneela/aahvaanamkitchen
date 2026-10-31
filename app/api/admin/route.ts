@@ -77,7 +77,7 @@ function productFields(b: Record<string, unknown>, creating: boolean) {
 }
 function settingsFields(b: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
-  for (const key of ['ordering_enabled','delivery_enabled'] as const) if (b[key] !== undefined) {
+  for (const key of ['ordering_enabled','delivery_enabled','analytics_enabled'] as const) if (b[key] !== undefined) {
     const v = bool(b[key]); if (v === null) throw new Error('Invalid '+key); data[key] = v;
   }
   for (const key of ['delivery_minimum_cents','default_delivery_fee_cents','minimum_notice_hours','default_preorder_notice_hours','max_advance_days'] as const) if (b[key] !== undefined) {
