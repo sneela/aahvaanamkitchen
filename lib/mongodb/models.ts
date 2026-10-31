@@ -1,6 +1,6 @@
 import type { ObjectId } from 'mongodb';
 export const defaultSettings = {
-  _id: 'store', ordering_enabled: false, delivery_enabled: false,
+  _id: 'store', ordering_enabled: false, delivery_enabled: false, analytics_enabled: true,
   delivery_minimum_cents: 0, default_delivery_fee_cents: 0,
   minimum_notice_hours: 2, default_preorder_notice_hours: 24, max_advance_days: 30,
   whatsapp_number: '12162364062', service_area_description: 'Greater Cleveland, Ohio',
@@ -19,7 +19,7 @@ export interface OrderDoc {
   customer_notes: string; status: string; payment_status: string;
   status_comment?: string; status_updated_at?: Date;
   subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
-  order_items: Array<{product_name_snapshot:string;quantity:number;unit_price_cents:number;line_total_cents:number}>;
+  order_items: Array<{product_slug_snapshot?:string;product_name_snapshot:string;quantity:number;unit_price_cents:number;line_total_cents:number}>;
   created_at: Date; updated_at: Date;
 }
 export const serialize = <T extends { _id?: ObjectId }>(doc: T) => {
