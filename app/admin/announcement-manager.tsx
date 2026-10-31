@@ -10,7 +10,7 @@ export type Announcement = {
 type Save = (method:'POST'|'PATCH'|'DELETE', data:Record<string,unknown>)=>Promise<boolean>;
 const draft = ():Announcement=>({id:'',title:'',message:'',kind:'notice',action_label:'',action_href:'',
   is_published:false,starts_at:null,ends_at:null,sort_order:100});
-const inputDate = (date: string | null) => date ? new Date(date).toISOString().slice(0,16) : '';
+const inputDate = (date: string | null) => { if (!date) return ''; const d = new Date(date); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 const timeValue = (local: string) => local ? new Date(local).toISOString() : null;
 
 function AnnouncementFields({ value, change, busy }: { value: Announcement; change:(next:Announcement)=>void;busy:boolean }) {
