@@ -30,9 +30,13 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
   }, [order.id, order.status, order.payment_status, order.status_comment]);
   const update = async (nextStatus: string) => {
     setLocalError('');
-    const note = comment.trim();
-    if (nextStatus === 'rejected' && !note) {
-      setLocalError('Please explain why this order is being rejected. The customer will see your comment.');
+    let note = comment.trim();
+    // Don't accidentally reuse a previous confirmation note as a rejection reason,
+    // or display a past rejection reason after confirming a revised order.
+    const previousComment = (order.status_comment || '').trim();
+    if (nextStatus === 'accepted' && order.status === 'rejected' && note === previousComment) note = '';
+    if (nextStatus === 'rejected' && (!note || (order.status !== 'rejected' && note === previousComment && previousComment.length > 0))) {
+      setLocalError('Please write a new reason for rejecting this order. The customer will see your message.');
       return;
     }
     if (nextStatus === 'rejected' && !window.confirm('Reject order #' + order.order_number + '? The customer will see your comment.')) return;
