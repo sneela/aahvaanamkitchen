@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import WhatsAppActions from './whatsapp-actions';
+import { whatsappLink } from '@/lib/whatsapp-order';
 
 export type AdminOrder = {
   id: string; order_number: number; customer_name: string; customer_phone: string;
@@ -46,11 +48,10 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
     });
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void update(status); };
-  const whatsapp = 'https://wa.me/' + order.customer_phone.replace(/\D/g, '') + '?text=' +
-    encodeURIComponent('Hi, this is Aahvaanam Kitchen regarding your order #' + order.order_number + '.');
+  const chatLink = whatsappLink(order.customer_phone);
   return <tr className="admin-order-row">
     <td><strong>#{order.order_number}</strong><small>{order.created_at ? new Date(order.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' }) : ''}</small></td>
-    <td><strong>{order.customer_name}</strong><p><a href={'tel:' + order.customer_phone}>{order.customer_phone}</a></p><a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp customer</a></td>
+    <td><strong>{order.customer_name}</strong><p><a href={'tel:' + order.customer_phone}>{order.customer_phone}</a></p>{chatLink && <a href={chatLink} target="_blank" rel="noopener noreferrer">Chat on WhatsApp ↗</a>}</td>
     <td><strong>{order.requested_date}</strong><p>{order.requested_time} Eastern</p><small>{order.fulfillment}</small>{order.delivery_address && <p>{order.delivery_address}</p>}</td>
     <td className="admin-order-items"><strong>{order.order_items.length} item types</strong>
       <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>
@@ -77,6 +78,7 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
           <button type="submit" className="admin-action" disabled={busy}>Save changes</button>
         </div>
       </form>
+      <WhatsAppActions order={order} />
     </td>
   </tr>;
 }
