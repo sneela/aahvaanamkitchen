@@ -9,7 +9,7 @@ for (const file of [
   'public/images/aahvaanam-correct-wordmark.webp','app/catalog/page.tsx',
   'app/page.tsx','app/globals.css','app/admin/page.tsx','app/admin/login/page.tsx','app/admin/dashboard.tsx',
   'app/api/storefront/route.ts','app/api/orders/route.ts','app/api/reviews/route.ts','app/api/catering/route.ts',
-  'app/api/admin/route.ts','app/api/auth/login/route.ts','app/api/auth/logout/route.ts',
+  'app/api/admin/route.ts','app/api/admin/analytics/route.ts','app/api/analytics/route.ts','app/admin/analytics-dashboard.tsx','app/admin/announcement-manager.tsx','components/visit-tracker.tsx','lib/client-analytics.ts','app/api/auth/login/route.ts','app/api/auth/logout/route.ts',
   'lib/auth/session.ts','lib/mongodb/client.ts','lib/mongodb/models.ts',
   'scripts/mongodb-indexes.mjs','scripts/seed-mongodb.mjs',
 ]) assert.ok(existsSync(join(root,file)), `Missing: ${file}`);

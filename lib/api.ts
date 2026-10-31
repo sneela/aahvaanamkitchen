@@ -6,10 +6,8 @@ export function jsonError(error: unknown, fallback = 'Request failed') {
   return NextResponse.json({ error: fallback }, { status: 500 });
 }
 export function badRequest(message: string, status = 400) { return NextResponse.json({ error: message }, { status }); }
-export async function parseBody(request: NextRequest, maxBytes = 16000): Promise<Record<string, unknown>> {
-  const length = Number(request.headers.get('content-length') || 0);
-  if (length > maxBytes) throw new AccessError(413, 'Request is too large');
-  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new AccessError(415, 'JSON is required');
+/** Verify browser-originating writes, including multipart image uploads. */
+export function validateSameOrigin(request: NextRequest) {
   const origin = request.headers.get('origin');
   if (origin) {
     let submitted: URL;
@@ -27,6 +25,12 @@ export async function parseBody(request: NextRequest, maxBytes = 16000): Promise
   }
   const fetchSite = request.headers.get('sec-fetch-site');
   if (fetchSite && !['same-origin','none'].includes(fetchSite)) throw new AccessError(403, 'Cross-site request blocked');
+}
+export async function parseBody(request: NextRequest, maxBytes = 16000): Promise<Record<string, unknown>> {
+  const length = Number(request.headers.get('content-length') || 0);
+  if (length > maxBytes) throw new AccessError(413, 'Request is too large');
+  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) throw new AccessError(415, 'JSON is required');
+  validateSameOrigin(request);
   const raw = await request.text();
   if (Buffer.byteLength(raw, 'utf8') > maxBytes) throw new AccessError(413, 'Request is too large');
   let data: unknown;
