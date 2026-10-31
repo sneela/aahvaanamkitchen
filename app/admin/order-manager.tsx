@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import WhatsAppActions from './whatsapp-actions';
-import { whatsappLink } from '@/lib/whatsapp-order';
+import { whatsappLink, whatsappOrderMessage } from '@/lib/whatsapp-order';
 
 export type AdminOrder = {
   id: string; order_number: number; customer_name: string; customer_phone: string;
@@ -49,9 +49,10 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void update(status); };
   const chatLink = whatsappLink(order.customer_phone);
+  const quickUpdateLink = whatsappLink(order.customer_phone, whatsappOrderMessage(order));
   return <tr className="admin-order-row">
     <td><strong>#{order.order_number}</strong><small>{order.created_at ? new Date(order.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' }) : ''}</small></td>
-    <td><strong>{order.customer_name}</strong><p><a href={'tel:' + order.customer_phone}>{order.customer_phone}</a></p>{chatLink && <a href={chatLink} target="_blank" rel="noopener noreferrer">Chat on WhatsApp ↗</a>}</td>
+    <td><strong>{order.customer_name}</strong><p><a href={'tel:' + order.customer_phone}>{order.customer_phone}</a></p>{chatLink && <div className="admin-quick-whatsapp"><a href={chatLink} target="_blank" rel="noopener noreferrer">Open WhatsApp chat ↗</a>{quickUpdateLink && <a href={quickUpdateLink} target="_blank" rel="noopener noreferrer">Prepare order update ↗</a>}</div>}</td>
     <td><strong>{order.requested_date}</strong><p>{order.requested_time} Eastern</p><small>{order.fulfillment}</small>{order.delivery_address && <p>{order.delivery_address}</p>}</td>
     <td className="admin-order-items"><strong>{order.order_items.length} item types</strong>
       <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>
