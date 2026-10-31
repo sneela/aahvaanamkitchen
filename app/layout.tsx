@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import VisitTracker from '@/components/visit-tracker';
 
 export const metadata: Metadata = {
   title: 'Aahvaanam Kitchen | Every Bite Feels Like Home',
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><VisitTracker/>{children}</body></html>;
 }
