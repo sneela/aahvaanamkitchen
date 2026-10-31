@@ -42,6 +42,12 @@ try{
  const announcements=(await expect('/api/admin','GET',undefined,200,cookie)).data.announcements;
  assert.equal(announcements.length,1);
  assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements[0].title,'Sunday special');
+
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,starts_at:new Date(Date.now()+86400000).toISOString()},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0,'Scheduled future banners stay hidden');
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,starts_at:null},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,1);
+
  await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,is_published:false},200,cookie);
  assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0);
  await expect('/api/admin','DELETE',{resource:'announcement',id:announcements[0].id},200,cookie);
