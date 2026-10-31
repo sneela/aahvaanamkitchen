@@ -38,6 +38,15 @@ try{
  assert.equal(throttled.status,429,'Changing User-Agent must not bypass the login rate limit');
  const admin=await expect('/api/admin','GET',undefined,200,cookie);assert.equal(admin.data.products.length,31);
 
+ await expect('/api/admin','POST',{resource:'announcement',title:'Sunday special',message:'Bakshalu pre-orders open!',kind:'special',is_published:true,action_label:'See menu',action_href:'#menu'},200,cookie);
+ const announcements=(await expect('/api/admin','GET',undefined,200,cookie)).data.announcements;
+ assert.equal(announcements.length,1);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements[0].title,'Sunday special');
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,is_published:false},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0);
+ await expect('/api/admin','DELETE',{resource:'announcement',id:announcements[0].id},200,cookie);
+
+
  // New catalog management: images, automatic slugs, updates and safe category deletion.
  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XmZkAAAAASUVORK5CYII=','base64');
  const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'item.png');
