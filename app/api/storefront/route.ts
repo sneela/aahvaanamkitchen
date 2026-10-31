@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 const noStore = { 'Cache-Control': 'no-store' };
 export async function GET() {
   if (!mongoConfigured()) return NextResponse.json({ connected: false, products: menuItems, settings: {
-    orderingEnabled: false, deliveryEnabled: false, deliveryMinimumCents: 0, deliveryFeeCents: 0,
+    orderingEnabled: false, deliveryEnabled: false, analyticsEnabled: false, deliveryMinimumCents: 0, deliveryFeeCents: 0,
     minimumNoticeHours: 2, defaultPreorderNoticeHours: 24, maxAdvanceDays: 30,
     whatsappNumber: defaultSettings.whatsapp_number, serviceArea: defaultSettings.service_area_description,
   }, specials: [], reviews: [], announcements: [] }, { headers: noStore });
@@ -53,7 +53,7 @@ export async function GET() {
         preorderNoticeHours: p.preorder_notice_hours, image: p.image_url || '/images/aahvaanam-correct-wordmark.webp', vegetarian: p.is_vegetarian,
         recentOrders24h: (recentBySlug.get(p.slug) || 0) + (recentByName.get(p.name) || 0),
       })),
-      settings: { orderingEnabled: settings.ordering_enabled, deliveryEnabled: settings.delivery_enabled,
+      settings: { orderingEnabled: settings.ordering_enabled, deliveryEnabled: settings.delivery_enabled, analyticsEnabled: settings.analytics_enabled !== false,
         deliveryMinimumCents: settings.delivery_minimum_cents, deliveryFeeCents: settings.default_delivery_fee_cents,
         minimumNoticeHours: settings.minimum_notice_hours, defaultPreorderNoticeHours: settings.default_preorder_notice_hours,
         maxAdvanceDays: settings.max_advance_days, whatsappNumber: settings.whatsapp_number,
