@@ -25,7 +25,7 @@ export async function GET() {
     await requireAdmin();
     const db = await mongoDb();
     const [orders, products, categories, settings, specials, reviews, catering] = await Promise.all([
-      db.collection<OrderDoc>('orders').find().sort({ created_at: -1 }).limit(100).toArray(),
+      db.collection<OrderDoc>('orders').find().sort({ created_at: -1, _id: -1 }).limit(100).toArray(),
       db.collection<ProductDoc>('products').find().sort({ sort_order: 1 }).toArray(),
       db.collection<{ id: string; name: string; sort_order: number; is_active: boolean }>('categories').find().sort({ sort_order: 1 }).toArray(),
       db.collection<SettingsDoc>('settings').findOne({ _id: 'store' }),
