@@ -180,3 +180,7 @@
 .admin-whatsapp-edit button{margin-top:9px}
 .admin-order-row td:last-child{min-width:315px}
 @media(max-width:760px){.admin-whatsapp-panel{max-width:295px}.admin-whatsapp-buttons a{width:100%}}
+
+
+.admin-quick-whatsapp{display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin-top:8px}
+.admin-quick-whatsapp a{font-size:11px;font-weight:700;color:#206c4a;line-height:1.4;text-underline-offset:2px}
