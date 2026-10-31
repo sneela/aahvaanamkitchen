@@ -7,7 +7,7 @@ const localUri=/^mongodb:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|\?|$)/;
 if (!process.env.MONGODB_URI || !localUri.test(process.env.MONGODB_URI)) throw Error('This test is restricted to a local MongoDB instance only');
 const dbName='aahvaanam_ci_'+Date.now(),password='IntegrationOnly-'+randomUUID();
 const salt=randomBytes(16).toString('hex'),hash=scryptSync(password,Buffer.from(salt,'hex'),64).toString('hex');
-const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:salt+':'+hash,SESSION_SECRET:randomBytes(40).toString('hex')};
+const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:salt+':'+hash,SESSION_SECRET:randomBytes(40).toString('hex'),RESEND_API_KEY:'',TWILIO_ACCOUNT_SID:'',TWILIO_AUTH_TOKEN:''};
 const client=new MongoClient(env.MONGODB_URI,{serverSelectionTimeoutMS:5000});
 let child,logs='';
 const base='http://127.0.0.1:3218';
@@ -82,6 +82,28 @@ try{
  const repeat=await expect('/api/orders','POST',order,200);assert.equal(repeat.data.order.number,created.data.order.number);
  assert.equal(await db.collection('orders').countDocuments(),1);
  const stored=await db.collection('orders').findOne({client_request_id:order.requestId});assert.equal(stored.status,'pending');assert.equal(stored.payment_status,'unpaid');
+
+ // Customers can see only their own order using the correct number AND phone.
+ const lookup={orderNumber:created.data.order.number,phone:order.phone};
+ const publicPending=await expect('/api/orders/status','POST',lookup,200);
+ assert.equal(publicPending.data.order.status,'pending');
+ assert.equal(publicPending.data.order.items[0].name,'Jowar Roti');
+ assert.equal(publicPending.data.order.items[0].quantity,2);
+ assert.equal(publicPending.data.order.totalCents,2300);
+ assert.ok(!('customer_name' in publicPending.data.order),'Customer identity must not leak');
+ assert.ok(!('delivery_address' in publicPending.data.order),'Delivery address must remain private');
+ await expect('/api/orders/status','POST',{...lookup,phone:'2165559999'},404);
+ await expect('/api/orders/status','POST',{...lookup,orderNumber:999999},404);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'rejected',status_comment:''},422,cookie);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'rejected',status_comment:'We cannot prepare this item for the requested date.'},200,cookie);
+ const rejected=await expect('/api/orders/status','POST',lookup,200);
+ assert.equal(rejected.data.order.status,'rejected');
+ assert.match(rejected.data.order.comment,/cannot prepare/);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'accepted',status_comment:'Confirmed. Please arrive at the selected time.'},200,cookie);
+ const confirmed=await expect('/api/orders/status','POST',lookup,200);
+ assert.equal(confirmed.data.order.status,'accepted');
+ assert.match(confirmed.data.order.comment,/Confirmed/);
+
  await expect('/api/orders','POST',{...order,requestId:randomUUID(),items:[{slug:'juwar-roti',quantity:1}]},422);
  await expect('/api/catering','POST',{name:'Test Caterer',phone:'2165550102',date,guests:12,message:'A small family gathering with vegetarian food.',website:''},201);
  await expect('/api/reviews','POST',{name:'Test Reviewer',rating:5,review:'A very pleasant experience with homemade food.',website:''},201);
@@ -106,5 +128,5 @@ try{
  assert.ok(!currentStorefront.data.products.some(p=>p.id==='juwar-roti'),'Storefront must exclude unavailable products');
  await expect('/api/auth/logout','POST',{},200,cookie);
  await expect('/api/admin','GET',undefined,401);
- console.log('MongoDB integration passed: seed, login rate limiting, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, category management, image uploads, automatic slugs, product edits/deletes, live catalog synchronization and logout.');
+ console.log('MongoDB integration passed: seed, login rate limiting, admin protection, settings, pending orders, idempotency, delivery fees, catering, reviews, specials, status, category management, image uploads, automatic slugs, product edits/deletes, customer order lookup, confirm/reject comments, live catalog synchronization and logout.');
 }finally{if(child){child.kill('SIGTERM');await sleep(300)}try{await client.db(dbName).dropDatabase()}catch{}await client.close()}
