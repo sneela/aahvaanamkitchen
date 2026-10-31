@@ -22,14 +22,14 @@ async function resendEmail(order: OrderDoc, body: string) {
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json',
-      'Idempotency-Key': 'aahvaanam-order-' + order.order_number,
+      'Idempotency-Key': 'aahvaanam-order-' + order.client_request_id,
     },
     body: JSON.stringify({
       from: sender, to: [recipient],
       subject: 'New Aahvaanam order #' + order.order_number,
       text: body,
     }),
-    signal: AbortSignal.timeout(7500),
+    signal: AbortSignal.timeout(3500),
   });
   if (!response.ok) throw new Error('Email notification rejected (' + response.status + ')');
 }
@@ -44,7 +44,7 @@ async function twilioMessage(params: URLSearchParams) {
         Authorization: 'Basic ' + Buffer.from(sid + ':' + token).toString('base64'),
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: params.toString(), signal: AbortSignal.timeout(7500),
+      body: params.toString(), signal: AbortSignal.timeout(3500),
     });
   if (!response.ok) throw new Error('Messaging notification rejected (' + response.status + ')');
 }
