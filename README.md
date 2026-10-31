@@ -1,5 +1,26 @@
 # Aahvaanam Kitchen — development branch
 
+## Troubleshooting: top banners and 24-hour menu trends
+
+**A published banner is missing:** In **Admin → Announcements**, check the status label on each record: **Live on website**, **Scheduled**, **Draft — hidden**, or **Expired — hidden**. Publishing is enabled by default for newly created notices; older drafts must be edited to enable Publish banner. Scheduled date/time fields are optional, so leave both blank for an immediate announcement. When no dedicated top announcement is currently active, the store displays up to three active published entries from the separate **Specials** tab at the top as well. If the storefront tab was already open, return to it to refresh, or use **Refresh updates** near the menu. Both admin and storefront must be running the same updated code and connected to the same database. Publishing to local MongoDB does not change an old deployed build.
+
+**Menu trends are missing:** The menu displays a badge for any product included in **at least one distinct saved order** created within the last rolling 24 hours; it shows the actual order count (not the number of units). At five or more, the badge uses stronger emphasis. Rejected or cancelled orders do not count. WhatsApp orders, manual/offline orders not entered into the `orders` collection, and merely viewing or adding items to the cart do not create popularity badges. A product with no qualifying recent orders intentionally has no badge. After testing by placing an order, use the storefront's **Refresh updates** button.
+
+To test these updates locally, run:
+
+```bash
+git fetch origin
+git switch fix/banner-and-order-trend-visibility
+git pull origin fix/banner-and-order-trend-visibility
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
+
+Open `http://localhost:3000/admin`, verify a banner is marked **Live on website**, then open `http://localhost:3000/` and check the top of the page. You can also inspect `http://localhost:3000/api/storefront`: `announcements` lists active banners, and `products[].recentOrders24h` lists real per-product order counts. Do not confuse a deployed website's older build or a different MongoDB database with your local development version. The integration tests should run **only against an isolated local MongoDB**, not your Atlas production data.
+
+
 ## New: popular-item badges, storefront announcements, and anonymous analytics
 
 Developed on `feature/announcements-and-analytics` separately from production. No new paid services, environment variables, databases, or third-party trackers are required.
