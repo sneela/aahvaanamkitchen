@@ -10,7 +10,6 @@ function hiddenPrompt(prompt) {
     const input = process.stdin;
     const wasRaw = Boolean(input.isRaw);
     let value = '';
-    process.stdout.write(prompt);
     const cleanup = () => {
       input.off('data', onData);
       input.setRawMode(wasRaw);
@@ -37,9 +36,12 @@ function hiddenPrompt(prompt) {
         }
       }
     };
+    // Enable no-echo mode before displaying the prompt so fast paste/input
+    // cannot race the terminal's echo setting.
     input.setRawMode(true);
     input.resume();
     input.on('data', onData);
+    process.stdout.write(prompt);
   });
 }
 
