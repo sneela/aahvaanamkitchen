@@ -1,5 +1,36 @@
 # Aahvaanam Kitchen — development branch
 
+## New: popular-item badges, storefront announcements, and anonymous analytics
+
+Developed on `feature/announcements-and-analytics` separately from production. No new paid services, environment variables, databases, or third-party trackers are required.
+
+**Menu popularity (actual orders, rolling 24 hours)**: Products with at least **5 distinct orders** in the previous rolling 24 hours show the exact count on their storefront card and details view. Counts come from the existing MongoDB `orders` collection, with one count per product per order, regardless of quantity. Rejected/cancelled orders do not count. The store API adds `recentOrders24h` per product. New orders record `product_slug_snapshot` to associate future orders with menu products; older orders are counted by their original saved product name where possible. No fake urgency or hard-coded purchase numbers. Refresh the storefront to see updated totals.
+
+**Admin announcements and specials at the top**: Use **Admin → Announcements → Add announcement**, set a title/message and type (**Notice** or **Special offer**), optional same-site link, optional start/end date, display order, and **Publish banner**. Save to MongoDB. Up to three active announcements appear above the website header (highest priority first). You can edit, unpublish, schedule, or delete each independently. Existing **Specials** still appear in the Specials section; announcements are managed separately so you control what is shown at the very top. Times entered through the admin browser are converted to UTC for database storage, then evaluated against the current time.
+
+**Private, first-party analytics**: The site now records only daily aggregate counters for four event types: approximate `visit` (once per browser tab session), `product_view` (clicks to **View details**, once per item per tab session), `add_to_cart` (add clicks), and `checkout_started` (checkout form opens). It does **not** store personal identities, analytics session IDs, contact details, raw browsing events, or third-party tracking cookies. Session storage is used only for browser-side deduplication. Abuse controls use temporary hashed IP buckets separately from analytics data. These counts are not reliable unique-person counts and can be affected by robots or repeated tabs. Actual `ordersPlaced` counts come from the orders collection, not browser submissions.
+
+Use **Admin → Analytics** to inspect the last 7, 30, or 90 days: visit totals, product-detail opens, cart-add clicks, checkout starts, real saved orders, a daily visit chart, and most-viewed products. You can turn collection off in **Admin → Settings → Enable anonymous website analytics**. Turning this off does not delete existing aggregated reports. Times in the report use UTC dates. Because site traffic data is newly collected, historical visitor metrics are not recoverable from the existing orders. The dashboard reflects activity only after this feature is running on the website.
+
+**Indexes and retention:** Once after pulling this branch, run these commands from your project directory (with your *private* local environment):
+
+```bash
+git fetch origin
+git switch feature/announcements-and-analytics
+git pull origin feature/announcements-and-analytics
+npm install
+node --env-file=.env.local scripts/mongodb-indexes.mjs
+npm run typecheck
+npm run build
+npm run dev
+```
+
+The new indexes optimize publishing and daily summaries. An automatic database TTL index removes analytics aggregate records after about 400 days; orders and announcements are not deleted by that TTL. Do **not** run `npm run test:integration` against your existing Atlas database: that test must be run against an isolated **local MongoDB** because it creates and removes test data.
+
+> The development website may connect to the same MongoDB Atlas cluster as production. Announcements and Settings changes save immediately to the connected database, and any records created there may become visible on production when the live version supports them. Keep ordering policies separate from analytics settings. To test without affecting real orders or inventory, configure a separate database such as `aahvaanam_kitchen_test` in your local `.env.local`, and seed it.
+
+
+
 ## Order submission, customer tracking and merchant alerts (feature branch)
 
 This feature is developed on `feature/order-tracking-and-alerts`, separate from the Netlify production branch. Run locally first:

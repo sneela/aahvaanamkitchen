@@ -24,7 +24,7 @@ export async function GET() {
   try {
     await requireAdmin();
     const db = await mongoDb();
-    const [orders, products, categories, settings, specials, reviews, catering] = await Promise.all([
+    const [orders, products, categories, settings, specials, reviews, catering, announcements] = await Promise.all([
       db.collection<OrderDoc>('orders').find().sort({ created_at: -1, _id: -1 }).limit(100).toArray(),
       db.collection<ProductDoc>('products').find().sort({ sort_order: 1 }).toArray(),
       db.collection<{ id: string; name: string; sort_order: number; is_active: boolean }>('categories').find().sort({ sort_order: 1 }).toArray(),
@@ -32,10 +32,11 @@ export async function GET() {
       db.collection('specials').find().sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('reviews').find().sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('catering_inquiries').find().sort({ created_at: -1 }).limit(100).toArray(),
+      db.collection('announcements').find().sort({ sort_order: 1, created_at: -1 }).limit(100).toArray(),
     ]);
     return NextResponse.json({ orders: orders.map(serialize), products: products.map(serialize),
       categories: categories.map(c => ({ id: c.id, name: c.name, is_active: c.is_active, sort_order: c.sort_order })), settings: { ...defaultSettings, ...settings },
-      specials: specials.map(serialize), reviews: reviews.map(serialize), catering: catering.map(serialize) },
+      specials: specials.map(serialize), reviews: reviews.map(serialize), catering: catering.map(serialize), announcements: announcements.map(serialize) },
       { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return jsonError(e, 'Unable to load administrator dashboard'); }
 }
@@ -77,7 +78,7 @@ function productFields(b: Record<string, unknown>, creating: boolean) {
 }
 function settingsFields(b: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
-  for (const key of ['ordering_enabled','delivery_enabled'] as const) if (b[key] !== undefined) {
+  for (const key of ['ordering_enabled','delivery_enabled','analytics_enabled'] as const) if (b[key] !== undefined) {
     const v = bool(b[key]); if (v === null) throw new Error('Invalid '+key); data[key] = v;
   }
   for (const key of ['delivery_minimum_cents','default_delivery_fee_cents','minimum_notice_hours','default_preorder_notice_hours','max_advance_days'] as const) if (b[key] !== undefined) {
@@ -110,6 +111,44 @@ function specialFields(b: Record<string, unknown>, creating: boolean) {
     const v = bool(b.is_published); if (v === null) throw new Error('Invalid publication status'); data.is_published = v;
   }
   if (creating && !data.title) throw new Error('Special title is required');
+  return data;
+}
+function announcementFields(b: Record<string, unknown>, creating: boolean) {
+  const data: Record<string, unknown> = {};
+  for (const [field, limit] of [['title',100], ['message',280], ['action_label',50], ['action_href',150]] as const) {
+    if (b[field] === undefined) continue;
+    if (typeof b[field] !== 'string' || b[field].length > limit) throw new Error('Invalid announcement '+field);
+    data[field] = str(b[field], limit);
+  }
+  if (b.kind !== undefined) {
+    if (b.kind !== 'notice' && b.kind !== 'special') throw new Error('Invalid announcement kind');
+    data.kind = b.kind;
+  }
+  if (b.is_published !== undefined) {
+    const published = bool(b.is_published);
+    if (published === null) throw new Error('Invalid announcement publishing setting');
+    data.is_published = published;
+  }
+  if (b.sort_order !== undefined) {
+    const order = int(b.sort_order, -100000, 100000);
+    if (order === null) throw new Error('Invalid announcement sort order');
+    data.sort_order = order;
+  }
+  for (const key of ['starts_at', 'ends_at'] as const) {
+    if (b[key] === undefined) continue;
+    if (b[key] === null || b[key] === '') { data[key] = null; continue; }
+    if (typeof b[key] !== 'string' || !Number.isFinite(Date.parse(b[key])) || b[key].length > 40)
+      throw new Error('Invalid announcement date');
+    data[key] = new Date(b[key]).toISOString();
+  }
+  if (data.action_href !== undefined && data.action_href !== '' &&
+    !(typeof data.action_href === 'string' && (
+      /^#[a-z0-9-]{1,80}$/.test(data.action_href) ||
+      /^\/(?!\/)[a-zA-Z0-9/_#?=&%-]{0,149}$/.test(data.action_href)
+    ))) throw new Error('Invalid announcement link (use a website path or #section)');
+  if (creating && (!data.title || !data.message)) throw new Error('Announcement title and message are required');
+  if (data.title !== undefined && !data.title) throw new Error('Announcement title is required');
+  if (data.message !== undefined && !data.message) throw new Error('Announcement message is required');
   return data;
 }
 async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
@@ -205,6 +244,28 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (data.starts_at && data.ends_at && new Date(String(data.starts_at)).getTime()>new Date(String(data.ends_at)).getTime()) return badRequest('End must follow start');
         if (method==='POST') await col.insertOne({ title:'',description:'',image_url:null,is_published:false,starts_at:null,ends_at:null,created_at:new Date(),...data });
         else if (!(await col.updateOne({ _id:new ObjectId(id) }, { $set:data })).matchedCount) return badRequest('Special not found',404);
+      }
+    } else if (resource === 'announcement') {
+      if (method !== 'POST' && !isId(id)) return badRequest('Invalid announcement ID');
+      const col = db.collection('announcements');
+      if (method === 'DELETE') {
+        if (!(await col.deleteOne({ _id: new ObjectId(id) })).deletedCount)
+          return badRequest('Announcement not found', 404);
+      } else {
+        data = announcementFields(b, method === 'POST');
+        if (!Object.keys(data).length) return badRequest('No changes');
+        const existing = method === 'PATCH' ? await col.findOne({ _id: new ObjectId(id) }) : null;
+        if (method === 'PATCH' && !existing) return badRequest('Announcement not found', 404);
+        const start = data.starts_at !== undefined ? data.starts_at : existing?.starts_at;
+        const end = data.ends_at !== undefined ? data.ends_at : existing?.ends_at;
+        if (start && end && Date.parse(String(start)) > Date.parse(String(end)))
+          return badRequest('Announcement end time must follow its start', 422);
+        if (method === 'POST') await col.insertOne({
+          title: '', message: '', kind: 'notice', action_label: '', action_href: '',
+          is_published: false, starts_at: null, ends_at: null, sort_order: 100,
+          created_at: new Date(), updated_at: new Date(), ...data,
+        });
+        else await col.updateOne({ _id: new ObjectId(id) }, { $set: { ...data, updated_at: new Date() } });
       }
     } else if (resource === 'review' && method === 'PATCH') {
       if (!isId(id) || typeof b.is_approved !== 'boolean') return badRequest('Invalid review');

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const noticeHours = Math.max(settings.minimum_notice_hours, ...products.map(p => p.requires_preorder ? Math.max(p.preorder_notice_hours, settings.default_preorder_notice_hours) : 0));
     if (requestedMs - Date.now() < noticeHours * 3600000) return badRequest('Please choose a later date/time to meet advance notice requirements', 422);
     if (requestedMs - Date.now() > settings.max_advance_days * 86400000) return badRequest('Requested date is too far ahead', 422);
-    const items = requested.map(i => { const p = bySlug.get(i.slug)!; return { product_name_snapshot: p.name, quantity: i.quantity, unit_price_cents: p.price_cents, line_total_cents: p.price_cents * i.quantity }; });
+    const items = requested.map(i => { const p = bySlug.get(i.slug)!; return { product_slug_snapshot: p.slug, product_name_snapshot: p.name, quantity: i.quantity, unit_price_cents: p.price_cents, line_total_cents: p.price_cents * i.quantity }; });
     const subtotal = items.reduce((sum, i) => sum + i.line_total_cents, 0);
     if (b.fulfillment === 'delivery' && subtotal < settings.delivery_minimum_cents) return badRequest('Delivery minimum not met', 422);
     const fee = b.fulfillment === 'delivery' ? settings.default_delivery_fee_cents : 0;

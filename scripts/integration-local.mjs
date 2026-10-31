@@ -38,6 +38,39 @@ try{
  assert.equal(throttled.status,429,'Changing User-Agent must not bypass the login rate limit');
  const admin=await expect('/api/admin','GET',undefined,200,cookie);assert.equal(admin.data.products.length,31);
 
+ await expect('/api/admin','POST',{resource:'announcement',title:'Sunday special',message:'Bakshalu pre-orders open!',kind:'special',is_published:true,action_label:'See menu',action_href:'#menu'},200,cookie);
+ const announcements=(await expect('/api/admin','GET',undefined,200,cookie)).data.announcements;
+ assert.equal(announcements.length,1);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements[0].title,'Sunday special');
+
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,starts_at:new Date(Date.now()+86400000).toISOString()},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0,'Scheduled future banners stay hidden');
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,starts_at:null},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,1);
+
+ await expect('/api/admin','PATCH',{resource:'announcement',id:announcements[0].id,is_published:false},200,cookie);
+ assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0);
+ await expect('/api/admin','DELETE',{resource:'announcement',id:announcements[0].id},200,cookie);
+
+ await expect('/api/admin/analytics?days=30','GET',undefined,401);
+ await expect('/api/analytics','POST',{event:'visit'},200);
+ await expect('/api/analytics','POST',{event:'product_view',slug:'juwar-roti'},200);
+ await expect('/api/analytics','POST',{event:'add_to_cart',slug:'juwar-roti'},200);
+ await expect('/api/analytics','POST',{event:'checkout_started'},200);
+ await expect('/api/analytics','POST',{event:'product_view',slug:'missing-item'},404);
+ const analytics=await expect('/api/admin/analytics?days=30','GET',undefined,200,cookie);
+ assert.equal(analytics.data.totals.visits,1);
+ assert.equal(analytics.data.totals.productViews,1);
+ assert.equal(analytics.data.totals.addToCart,1);
+ assert.equal(analytics.data.totals.checkoutStarted,1);
+ assert.equal(analytics.data.totals.ordersPlaced,0);
+ await expect('/api/admin','PATCH',{resource:'settings',analytics_enabled:false},200,cookie);
+ const disabled=await fetch(base+'/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'visit'})});
+ assert.equal(disabled.status,204);
+ await expect('/api/admin','PATCH',{resource:'settings',analytics_enabled:true},200,cookie);
+
+
+
  // New catalog management: images, automatic slugs, updates and safe category deletion.
  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XmZkAAAAASUVORK5CYII=','base64');
  const form=new FormData();form.append('image',new Blob([png],{type:'image/png'}),'item.png');
@@ -83,6 +116,19 @@ try{
  assert.equal(await db.collection('orders').countDocuments(),1);
  const stored=await db.collection('orders').findOne({client_request_id:order.requestId});assert.equal(stored.status,'pending');assert.equal(stored.payment_status,'unpaid');
 
+ assert.equal(stored.order_items[0].product_slug_snapshot,'juwar-roti');
+ for(let i=0;i<4;i++){
+   await expect('/api/orders','POST',{...order,requestId:randomUUID()},201);
+ }
+ const popular=(await expect('/api/storefront','GET',undefined,200)).data.products.find(p=>p.id==='juwar-roti');
+ assert.equal(popular.recentOrders24h,5);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'rejected',status_comment:'Test rejection'},200,cookie);
+ const reduced=(await expect('/api/storefront','GET',undefined,200)).data.products.find(p=>p.id==='juwar-roti');
+ assert.equal(reduced.recentOrders24h,4);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'accepted',status_comment:'Test re-confirmation'},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'pending',status_comment:''},200,cookie);
+
+
  // Customers can see only their own order using the correct number AND phone.
  const lookup={orderNumber:created.data.order.number,phone:order.phone};
  const publicPending=await expect('/api/orders/status','POST',lookup,200);
@@ -91,8 +137,8 @@ try{
  assert.equal(publicPending.data.order.items[0].quantity,2);
  assert.equal(publicPending.data.order.totalCents,2300);
  const paged=await expect('/api/admin/orders?offset=0','GET',undefined,200,cookie);
- assert.equal(paged.data.orders.length,1);
- assert.equal(paged.data.orders[0].order_number,created.data.order.number);
+ assert.equal(paged.data.orders.length,5);
+ assert.ok(paged.data.orders.some(o=>o.order_number===created.data.order.number));
  await expect('/api/admin/orders?offset=bogus','GET',undefined,400,cookie);
  await expect('/api/admin/orders?offset=0','GET',undefined,401);
  const withCountryCode=await expect('/api/orders/status','POST',{...lookup,phone:'+1 (216) 555-0101'},200);

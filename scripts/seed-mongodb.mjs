@@ -21,7 +21,7 @@ try {
     } }, { upsert: true });
   }
   await db.collection('settings').updateOne({ _id: 'store' }, { $setOnInsert: {
-    ordering_enabled: false, delivery_enabled: false, delivery_minimum_cents: 0, default_delivery_fee_cents: 0,
+    ordering_enabled: false, delivery_enabled: false, analytics_enabled: true, delivery_minimum_cents: 0, default_delivery_fee_cents: 0,
     minimum_notice_hours: 2, default_preorder_notice_hours: 24, max_advance_days: 30,
     whatsapp_number: '12162364062', service_area_description: 'Greater Cleveland, Ohio',
   } }, { upsert: true });
