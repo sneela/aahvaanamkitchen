@@ -5,15 +5,12 @@ import { whatsappLink, whatsappOrderMessage, type OrderForWhatsApp } from '@/lib
 
 /** Opens WhatsApp Web or the app with an editable draft; never sends on its own. */
 export default function WhatsAppActions({ order }: { order: OrderForWhatsApp }) {
-  const [draft, setDraft] = useState(() => whatsappOrderMessage(order));
+  const suggestedMessage = whatsappOrderMessage(order);
+  const [draft, setDraft] = useState(suggestedMessage);
   useEffect(() => {
-    // Reset the draft when the administrator saves a new order status or note.
-    setDraft(whatsappOrderMessage(order));
-  }, [
-    order.order_number, order.customer_name, order.customer_phone,
-    order.status, order.status_comment, order.requested_date,
-    order.requested_time, order.fulfillment, order.total_cents, order.order_items,
-  ]);
+    // Only reset the draft when actual saved content changes, not on every dashboard refresh.
+    setDraft(suggestedMessage);
+  }, [suggestedMessage]);
 
   const chat = whatsappLink(order.customer_phone);
   const prepared = whatsappLink(order.customer_phone, draft);
@@ -42,7 +39,7 @@ export default function WhatsAppActions({ order }: { order: OrderForWhatsApp }) 
         value={draft}
         onChange={event => setDraft(event.target.value)}
       />
-      <button className="admin-action" type="button" onClick={() => setDraft(whatsappOrderMessage(order))}>
+      <button className="admin-action" type="button" onClick={() => setDraft(suggestedMessage)}>
         Reset to saved order status
       </button>
     </details>
