@@ -90,6 +90,8 @@ try{
  assert.equal(publicPending.data.order.items[0].name,'Jowar Roti');
  assert.equal(publicPending.data.order.items[0].quantity,2);
  assert.equal(publicPending.data.order.totalCents,2300);
+ const withCountryCode=await expect('/api/orders/status','POST',{...lookup,phone:'+1 (216) 555-0101'},200);
+ assert.equal(withCountryCode.data.order.number,created.data.order.number);
  assert.ok(!('customer_name' in publicPending.data.order),'Customer identity must not leak');
  assert.ok(!('delivery_address' in publicPending.data.order),'Delivery address must remain private');
  await expect('/api/orders/status','POST',{...lookup,phone:'2165559999'},404);
