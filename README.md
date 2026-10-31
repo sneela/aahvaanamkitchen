@@ -1,5 +1,40 @@
 # Aahvaanam Kitchen — development branch
 
+## Order submission, customer tracking and merchant alerts (feature branch)
+
+This feature is developed on `feature/order-tracking-and-alerts`, separate from the Netlify production branch. Run locally first:
+
+```bash
+git fetch origin
+git switch feature/order-tracking-and-alerts
+git pull
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
+
+When **ordering is enabled by an administrator**, customers can submit their cart and requested pickup/delivery time. The existing `POST /api/orders` validates items against the live MongoDB menu, calculates server-side totals, saves the order as `pending`/`unpaid`, and returns its order number. Duplicate requests with the same request ID return the same number without creating another order. Website orders remain disabled by default until you explicitly enable them in **Settings** after operational/legal readiness checks.
+
+Customers can use the **Track Order** section on the homepage or `/track-order`. The receipt links to the tracker with the order number, and customers enter the **phone number used at checkout**. `POST /api/orders/status` rate-limits lookup attempts and returns itemized totals, status, and kitchen comment only when the order number and phone match. It never returns customer name, delivery address or phone. After confirmation it shows **Confirmed**, after rejection **Rejected** plus the kitchen's reason. This lookup does not send automatic SMS/email to customers.
+
+The **Orders** tab of the kitchen dashboard lists the most recent 100 orders in a searchable, filterable table, with itemized dishes, quantities, unit prices, totals, requested date/time, customer notes and payment state. You can **Confirm**, **Reject** (a comment is required), or **Save changes** for preparation/delivery/completion status and payment. Customer-visible comments appear when the shopper checks their status. Administrators can also open a manually composed WhatsApp chat with the customer.
+
+### Optional owner notifications
+
+New orders can trigger merchant notifications. All three integrations are **opt-in and disabled until configured**. Notification failures are logged without returning a false order-submission failure. Owner notifications are sent **only for newly saved orders**, not status updates or request retries. For testing, leave notification variables unset to avoid external calls and charges.
+
+**Email (recommended first):** Create an account at https://resend.com and verify a domain you control (including its DNS records). Set `RESEND_API_KEY`, `ORDER_ALERT_FROM_EMAIL` (a sender authorized for your verified domain), and `ORDER_ALERT_EMAIL` (the inbox where you want notifications). Resend has a free tier with usage caps; verify current pricing before enabling. A message includes the order number, contact phone, requested time, itemized details, and amount.
+
+**SMS (optional paid provider):** Configure `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM` and `ORDER_ALERT_SMS_TO`, with approved E.164-format numbers (for example `+1...`). Twilio charges for usage and often for sender number registration/hosting. SMS contains a brief order summary without customers' addresses.
+
+**WhatsApp (optional advanced setup):** With a registered WhatsApp Business sender and an **approved utility template** through Twilio, set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `ORDER_ALERT_WHATSAPP_TO`, and `TWILIO_WHATSAPP_TEMPLATE_SID`. The approved template should use `{{1}}` for the order number and `{{2}}` for total. The recipient must opt in to receive WhatsApp messages. WhatsApp/Meta template charges and Twilio messaging fees apply. No attempt is made to send arbitrary unsolicited free-form WhatsApp messages.
+
+Never commit secrets to GitHub. Set your keys locally in `.env.local` and eventually in Netlify Functions environment variables only after testing. Email sender domain verification and Twilio/WhatsApp business verification must be completed outside the code. If none of these integrations is configured, **the database order flow and tracking still work**; simply check the admin dashboard manually.
+
+To test the database API end to end, use `npm run test:integration` **only against an isolated local MongoDB instance**, never your Atlas data. The integration test sets merchant notification credentials to blank. Its database is temporary and is deleted after testing.
+
+
 ## Local testing: catalog editor and photo uploads
 
 The new catalog-management features are developed separately on branch `feature/admin-catalog-image-uploads`. The active Netlify production branch is unchanged until you decide to merge/deploy. If Netlify branch-deploy previews are enabled, turn them off to avoid extra usage.
