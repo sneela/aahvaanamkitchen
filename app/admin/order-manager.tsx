@@ -84,23 +84,47 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
 export default function OrderManager({ orders, busy, save }: { orders: AdminOrder[]; busy: boolean; save: Save }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const shown = orders.filter(o => {
+  const [olderOrders, setOlderOrders] = useState<AdminOrder[]>([]);
+  const [nextOffset, setNextOffset] = useState<number | null>(orders.length === 100 ? 100 : null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState('');
+  useEffect(() => {
+    setOlderOrders([]);
+    setNextOffset(orders.length === 100 ? 100 : null);
+    setOlderError('');
+  }, [orders]);
+  const loadedOrders = [...orders, ...olderOrders];
+  const loadOlder = async () => {
+    if (nextOffset === null || loadingOlder) return;
+    setLoadingOlder(true); setOlderError('');
+    try {
+      const response = await fetch('/api/admin/orders?offset=' + nextOffset, { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Unable to load older orders');
+      setOlderOrders(previous => [...previous, ...json.orders]);
+      setNextOffset(json.nextOffset);
+    } catch (e) { setOlderError(e instanceof Error ? e.message : 'Unable to load older orders'); }
+    finally { setLoadingOlder(false); }
+  };
+  const shown = loadedOrders.filter(o => {
     if (filter !== 'all' && o.status !== filter) return false;
     const text = [o.order_number, o.customer_name, o.customer_phone, ...o.order_items.map(i => i.product_name_snapshot)].join(' ').toLowerCase();
     return text.includes(search.toLowerCase());
   });
   return <section className="admin-orders">
-    <div className="admin-section-heading"><div><h2>Customer orders</h2><p>Review every item, confirm or reject requests, and leave customer-visible updates.</p></div><strong>{orders.filter(o => o.status === 'pending').length} awaiting review</strong></div>
+    <div className="admin-section-heading"><div><h2>Customer orders</h2><p>Review every item, confirm or reject requests, and leave customer-visible updates.</p></div><strong>{loadedOrders.filter(o => o.status === 'pending').length} pending in loaded orders</strong></div>
     <div className="admin-table-tools">
       <label>Search orders<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Order number, customer, product or phone" /></label>
       <label>Filter by status<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All statuses</option>{statuses.map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select></label>
-      <span>{shown.length} of {orders.length} orders</span>
+      <span>{shown.length} of {loadedOrders.length} loaded orders</span>
     </div>
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
     </tr></thead><tbody>
       {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} />)}
-      {!shown.length && <tr><td colSpan={7}>No matching orders.</td></tr>}
+      {!shown.length && <tr><td colSpan={7}>No matching orders in the loaded list.</td></tr>}
     </tbody></table></div>
+    {olderError && <p role="alert" className="admin-error">{olderError}</p>}
+    {nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
   </section>;
 }
