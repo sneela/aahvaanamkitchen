@@ -14,6 +14,9 @@ try {
     db.collection('reviews').createIndex({ is_approved: 1, created_at: -1 }),
     db.collection('catering_inquiries').createIndex({ created_at: -1 }),
     db.collection('rateLimits').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    db.collection('analytics_daily').createIndex({ day: 1, event: 1 }),
+    db.collection('analytics_daily').createIndex({ expire_at: 1 }, { expireAfterSeconds: 0 }),
+    db.collection('announcements').createIndex({ is_published: 1, sort_order: 1 }),
   ]);
   console.log('MongoDB indexes ready');
 } finally { await client.close(); }
