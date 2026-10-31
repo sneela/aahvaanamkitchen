@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CatalogManager, CategoryManager } from './catalog-manager';
-import OrderManager from './order-manager';
+import OrderManager, { type AdminOrder } from './order-manager';
 type RecordItem = {id:string;[key:string]:any};
-type Data = {orders:RecordItem[];products:RecordItem[];categories:{id:string;name:string;is_active:boolean;sort_order:number}[];settings:Record<string,any>;specials:RecordItem[];reviews:RecordItem[];catering:RecordItem[]};
+type Data = {orders:AdminOrder[];products:RecordItem[];categories:{id:string;name:string;is_active:boolean;sort_order:number}[];settings:Record<string,any>;specials:RecordItem[];reviews:RecordItem[];catering:RecordItem[]};
 const tabs=['Orders','Menu','Categories','Settings','Specials','Reviews','Catering'] as const;
 const money=(c:number)=>'$'+(c/100).toFixed(2);
 async function request(method:string,body?:unknown){const r=await fetch('/api/admin',{method,headers:{'Content-Type':'application/json'},cache:'no-store',...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j;}
