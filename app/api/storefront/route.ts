@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { mongoConfigured, mongoDb } from '@/lib/mongodb/client';
-import { defaultSettings, serialize, type ProductDoc, type SettingsDoc } from '@/lib/mongodb/models';
+import { defaultSettings, serialize, type ProductDoc, type OrderDoc, type SettingsDoc } from '@/lib/mongodb/models';
 import { menuItems } from '@/lib/menu';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ export async function GET() {
       db.collection('specials').find({ is_published: true }).sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('reviews').find({ is_approved: true }).sort({ created_at: -1 }).limit(8).toArray(),
       db.collection('announcements').find({ is_published: true }).sort({ sort_order: 1, created_at: -1 }).limit(20).toArray(),
-      db.collection<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string }> }>('orders')
+      db.collection<OrderDoc>('orders')
         .find({ created_at: { $gte: new Date(Date.now() - 24*60*60*1000) }, status: { $nin: ['rejected','cancelled'] } })
         .project<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string }> }>({ order_items: 1, _id: 0 }).toArray(),
     ]);
