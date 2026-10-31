@@ -112,6 +112,9 @@ try{
  const updated=await expect('/api/storefront','GET',undefined,200);assert.equal(updated.data.settings.orderingEnabled,true);
  const date=easternFuture(),order={name:'Test Customer',phone:'2165550101',date,time:'18:00',address:'123 Test Street, Cleveland OH 44101',notes:'Integration test',fulfillment:'delivery',requestId:randomUUID(),items:[{slug:'juwar-roti',quantity:2}],website:''};
  const created=await expect('/api/orders','POST',order,201);assert.equal(created.data.order.totalCents,2300);assert.equal(created.data.order.deliveryFeeCents,300);
+ const firstOrderMenu=(await expect('/api/storefront','GET',undefined,200)).data;
+ assert.equal(firstOrderMenu.products.find(p=>p.id==='juwar-roti').recentOrders24h,1,'First saved order must produce a visible recent-order badge');
+ assert.equal(firstOrderMenu.products.find(p=>p.id==='ragi-roti').recentOrders24h,0,'Products without orders must not display an invented count');
  const repeat=await expect('/api/orders','POST',order,200);assert.equal(repeat.data.order.number,created.data.order.number);
  assert.equal(await db.collection('orders').countDocuments(),1);
  const stored=await db.collection('orders').findOne({client_request_id:order.requestId});assert.equal(stored.status,'pending');assert.equal(stored.payment_status,'unpaid');
@@ -165,6 +168,9 @@ try{
  const published=await expect('/api/storefront','GET',undefined,200);assert.equal(published.data.reviews.length,1);
  await expect('/api/admin','POST',{resource:'special',title:'Integration Festival Special',description:'Available by advance request',is_published:true},200,cookie);
  const special=await expect('/api/storefront','GET',undefined,200);assert.equal(special.data.specials.length,1);
+ assert.equal(special.data.announcements.length,1,'Published Specials are shown as a banner when no announcement is live');
+ assert.equal(special.data.announcements[0].title,'Integration Festival Special');
+ assert.equal(special.data.announcements[0].actionHref,'#specials');
  await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'completed',payment_status:'paid'},200,cookie);
  const changed=await db.collection('orders').findOne({_id:stored._id});assert.equal(changed.status,'completed');assert.equal(changed.payment_status,'paid');
  const initialCatalogResponse=await fetch(base+'/catalog');assert.equal(initialCatalogResponse.status,200);

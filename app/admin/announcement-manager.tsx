@@ -9,7 +9,17 @@ export type Announcement = {
 };
 type Save = (method:'POST'|'PATCH'|'DELETE', data:Record<string,unknown>)=>Promise<boolean>;
 const draft = ():Announcement=>({id:'',title:'',message:'',kind:'notice',action_label:'',action_href:'',
-  is_published:false,starts_at:null,ends_at:null,sort_order:100});
+  is_published:true,starts_at:null,ends_at:null,sort_order:100});
+type BannerVisibility = { label:string; details:string; state:'live'|'scheduled'|'draft'|'expired' };
+function visibility(a:Announcement):BannerVisibility {
+  if(!a.is_published) return {label:'Draft — hidden',details:'Check Publish banner and save to make this visible.',state:'draft'};
+  const now=Date.now();
+  if(a.starts_at && Date.parse(a.starts_at)>now)
+    return {label:'Scheduled',details:'The banner will appear after its scheduled start time.',state:'scheduled'};
+  if(a.ends_at && Date.parse(a.ends_at)<now)
+    return {label:'Expired — hidden',details:'Change or remove the end time and save to display it again.',state:'expired'};
+  return {label:'Live on website',details:'This banner is currently published and should appear at the top of the storefront. Refresh the website tab if it is already open.',state:'live'};
+}
 const inputDate = (date: string | null) => { if (!date) return ''; const d = new Date(date); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 const timeValue = (local: string) => local ? new Date(local).toISOString() : null;
 
@@ -24,7 +34,7 @@ function AnnouncementFields({ value, change, busy }: { value: Announcement; chan
     <label>Starts (optional)<input type="datetime-local" disabled={busy} value={inputDate(value.starts_at)} onChange={e=>field('starts_at',timeValue(e.target.value))} /></label>
     <label>Ends (optional)<input type="datetime-local" disabled={busy} value={inputDate(value.ends_at)} onChange={e=>field('ends_at',timeValue(e.target.value))} /></label>
     <label>Display order<input type="number" min="-100000" max="100000" disabled={busy} value={value.sort_order} onChange={e=>field('sort_order',Number(e.target.value))} /></label>
-    <label className="admin-check"><input type="checkbox" checked={value.is_published} disabled={busy} onChange={e=>field('is_published',e.target.checked)} /> Publish banner</label>
+    <label className="admin-check"><input type="checkbox" checked={value.is_published} disabled={busy} onChange={e=>field('is_published',e.target.checked)} /> Publish banner (checked by default for new notices)</label>
     <p className="wide admin-hint">Published banners appear above the website header during their scheduled period. Lower display-order numbers appear first. Links must stay within this website.</p>
   </div>;
 }
@@ -40,14 +50,15 @@ function AnnouncementRow({ item, busy, save }: {item:Announcement;busy:boolean;s
     e.preventDefault();
     if(await save('PATCH',{...payload(value),id:item.id}))setEditing(false);
   }
+  const bannerState=visibility(item);
   return <article className="admin-card announce-card">
-    <div className="announce-card-head"><div><h3>{item.title}</h3><small>{item.kind === 'special' ? 'Special' : 'Notice'} · {item.is_published ? 'Published' : 'Draft'} · order {item.sort_order}</small></div><div className="admin-table-actions">
+    <div className="announce-card-head"><div><h3>{item.title}</h3><small>{item.kind === 'special' ? 'Special' : 'Notice'} · order {item.sort_order}</small><span className={'announce-state announce-state-'+bannerState.state}>{bannerState.label}</span></div><div className="admin-table-actions">
       {!editing?<button type="button" className="admin-action" disabled={busy} onClick={()=>{setValue({...item});setEditing(true);}}>Edit</button>:null}
       <button type="button" className="danger" disabled={busy} onClick={()=>{if(window.confirm('Delete this website announcement?'))void save('DELETE',{resource:'announcement',id:item.id});}}>Delete</button>
     </div></div>
     {editing?<form onSubmit={e=>void submit(e)}><AnnouncementFields value={value} change={setValue} busy={busy}/><div className="announce-buttons"><button type="submit" className="primary" disabled={busy}>Save changes</button><button type="button" className="admin-action" disabled={busy} onClick={()=>{setEditing(false);setValue({...item});}}>Cancel</button></div></form>:
     <><p>{item.message}</p>{item.action_label&&item.action_href&&<small>Link: {item.action_label} → {item.action_href}</small>}
-    <p className="quiet">Schedule: {item.starts_at ? new Date(item.starts_at).toLocaleString() : 'Immediately'} – {item.ends_at ? new Date(item.ends_at).toLocaleString() : 'Until unpublished'}</p></>}
+    <p className="quiet">Schedule: {item.starts_at ? new Date(item.starts_at).toLocaleString() : 'Immediately'} – {item.ends_at ? new Date(item.ends_at).toLocaleString() : 'Until unpublished'}</p><p className="announce-guidance">{bannerState.details}</p></>}
   </article>;
 }
 
@@ -58,7 +69,7 @@ export default function AnnouncementManager({ announcements, busy, save }: {anno
     if(await save('POST',payload(value))) {setValue(draft());setAdding(false);}
   }
   return <section className="admin-announcements">
-    <div className="admin-section-heading"><div><h2>Website banners & specials</h2><p>Publish an announcement above the storefront header, or schedule a special for later.</p></div>
+    <div className="admin-section-heading"><div><h2>Website banners & specials</h2><p>Publish a notice above the website header. Banners show only when Published and within their scheduled dates.</p><p className="quiet"><strong>{announcements.filter(a=>visibility(a).state==='live').length} live</strong> · {announcements.filter(a=>visibility(a).state==='scheduled').length} scheduled · {announcements.filter(a=>visibility(a).state==='draft').length} drafts. If no announcement is live, currently published Specials appear as fallback banners.</p><a href="/" target="_blank" rel="noopener noreferrer">Open storefront ↗</a></div>
     <button className="primary" type="button" onClick={()=>setAdding(a=>!a)}>{adding?'Close form':'+ Add announcement'}</button></div>
     {adding&&<article className="admin-card"><h3>New announcement</h3><form onSubmit={e=>void create(e)}>
       <AnnouncementFields value={value} change={setValue} busy={busy}/>
