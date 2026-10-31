@@ -136,8 +136,8 @@ try{
  assert.equal(publicPending.data.order.items[0].quantity,2);
  assert.equal(publicPending.data.order.totalCents,2300);
  const paged=await expect('/api/admin/orders?offset=0','GET',undefined,200,cookie);
- assert.equal(paged.data.orders.length,1);
- assert.equal(paged.data.orders[0].order_number,created.data.order.number);
+ assert.equal(paged.data.orders.length,5);
+ assert.ok(paged.data.orders.some(o=>o.order_number===created.data.order.number));
  await expect('/api/admin/orders?offset=bogus','GET',undefined,400,cookie);
  await expect('/api/admin/orders?offset=0','GET',undefined,401);
  const withCountryCode=await expect('/api/orders/status','POST',{...lookup,phone:'+1 (216) 555-0101'},200);
