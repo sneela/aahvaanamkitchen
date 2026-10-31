@@ -46,6 +46,24 @@ try{
  assert.equal((await expect('/api/storefront','GET',undefined,200)).data.announcements.length,0);
  await expect('/api/admin','DELETE',{resource:'announcement',id:announcements[0].id},200,cookie);
 
+ await expect('/api/admin/analytics?days=30','GET',undefined,401);
+ await expect('/api/analytics','POST',{event:'visit'},200);
+ await expect('/api/analytics','POST',{event:'product_view',slug:'juwar-roti'},200);
+ await expect('/api/analytics','POST',{event:'add_to_cart',slug:'juwar-roti'},200);
+ await expect('/api/analytics','POST',{event:'checkout_started'},200);
+ await expect('/api/analytics','POST',{event:'product_view',slug:'missing-item'},404);
+ const analytics=await expect('/api/admin/analytics?days=30','GET',undefined,200,cookie);
+ assert.equal(analytics.data.totals.visits,1);
+ assert.equal(analytics.data.totals.productViews,1);
+ assert.equal(analytics.data.totals.addToCart,1);
+ assert.equal(analytics.data.totals.checkoutStarted,1);
+ assert.equal(analytics.data.totals.ordersPlaced,0);
+ await expect('/api/admin','PATCH',{resource:'settings',analytics_enabled:false},200,cookie);
+ const disabled=await fetch(base+'/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'visit'})});
+ assert.equal(disabled.status,204);
+ await expect('/api/admin','PATCH',{resource:'settings',analytics_enabled:true},200,cookie);
+
+
 
  // New catalog management: images, automatic slugs, updates and safe category deletion.
  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XmZkAAAAASUVORK5CYII=','base64');
