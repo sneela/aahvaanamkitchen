@@ -126,6 +126,7 @@ try{
  const reduced=(await expect('/api/storefront','GET',undefined,200)).data.products.find(p=>p.id==='juwar-roti');
  assert.equal(reduced.recentOrders24h,4);
  await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'accepted',status_comment:'Test re-confirmation'},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'pending',status_comment:''},200,cookie);
 
 
  // Customers can see only their own order using the correct number AND phone.
