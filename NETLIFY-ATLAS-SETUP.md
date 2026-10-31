@@ -37,7 +37,7 @@ npm install
 npm run admin:hash
 ```
 
-The script asks for a password (its input is **visible** in the terminal) and prints `ADMIN_PASSWORD_HASH` and `SESSION_SECRET`. Store them directly in Netlify. Do not save these outputs in source control.
+The script asks for a password twice **without echoing the input** and prints `ADMIN_PASSWORD_HASH` and `SESSION_SECRET`. Store them directly in Netlify. Do not save these outputs in source control.
 
 ## 4. Seed the database and create indexes
 
