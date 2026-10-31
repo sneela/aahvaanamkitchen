@@ -6,7 +6,7 @@ import { defaultSettings, serialize, type ProductDoc, type OrderDoc, type Settin
 import { badRequest, bool, int, jsonError, parseBody, str } from '@/lib/api';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-const statuses = ['pending','accepted','preparing','ready_for_pickup','out_for_delivery','completed','cancelled'];
+const statuses = ['pending','accepted','rejected','preparing','ready_for_pickup','out_for_delivery','completed','cancelled'];
 const payments = ['unpaid','paid','refunded'];
 const inquiryStatuses = ['new','contacted','closed'];
 const isId = (s: string) => /^[a-f0-9]{24}$/i.test(s);
@@ -25,7 +25,7 @@ export async function GET() {
     await requireAdmin();
     const db = await mongoDb();
     const [orders, products, categories, settings, specials, reviews, catering] = await Promise.all([
-      db.collection<OrderDoc>('orders').find().sort({ created_at: -1 }).limit(100).toArray(),
+      db.collection<OrderDoc>('orders').find().sort({ created_at: -1, _id: -1 }).limit(100).toArray(),
       db.collection<ProductDoc>('products').find().sort({ sort_order: 1 }).toArray(),
       db.collection<{ id: string; name: string; sort_order: number; is_active: boolean }>('categories').find().sort({ sort_order: 1 }).toArray(),
       db.collection<SettingsDoc>('settings').findOne({ _id: 'store' }),
@@ -177,10 +177,24 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
       await db.collection('settings').updateOne({ _id: 'store' as never }, { $set: data }, { upsert:true });
     } else if (resource === 'order' && method === 'PATCH') {
       if (!isId(id)) return badRequest('Invalid order ID');
-      if (b.status !== undefined) { if (!statuses.includes(String(b.status))) return badRequest('Invalid order status'); data.status = b.status; }
-      if (b.payment_status !== undefined) { if (!payments.includes(String(b.payment_status))) return badRequest('Invalid payment status'); data.payment_status = b.payment_status; }
+      if (b.status !== undefined) {
+        if (!statuses.includes(String(b.status))) return badRequest('Invalid order status');
+        data.status = b.status;
+      }
+      if (b.payment_status !== undefined) {
+        if (!payments.includes(String(b.payment_status))) return badRequest('Invalid payment status');
+        data.payment_status = b.payment_status;
+      }
+      if (b.status_comment !== undefined) {
+        if (typeof b.status_comment !== 'string' || b.status_comment.length > 1000) return badRequest('Invalid customer comment');
+        data.status_comment = b.status_comment.trim();
+      }
+      if (data.status === 'rejected' && !data.status_comment) return badRequest('Add an explanation before rejecting an order',422);
       if (!Object.keys(data).length) return badRequest('No changes');
-      if (!(await db.collection('orders').updateOne({ _id: new ObjectId(id) }, { $set: { ...data, updated_at:new Date() } })).matchedCount) return badRequest('Order not found',404);
+      const timestamp = new Date();
+      if (data.status !== undefined || data.status_comment !== undefined) data.status_updated_at = timestamp;
+      if (!(await db.collection('orders').updateOne({ _id: new ObjectId(id) }, { $set: { ...data, updated_at: timestamp } })).matchedCount)
+        return badRequest('Order not found',404);
     } else if (resource === 'special') {
       if (method !== 'POST' && !isId(id)) return badRequest('Invalid special ID');
       const col = db.collection('specials');

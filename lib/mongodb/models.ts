@@ -17,6 +17,7 @@ export interface OrderDoc {
   customer_name: string; customer_phone: string; fulfillment: 'pickup'|'delivery';
   requested_date: string; requested_time: string; delivery_address: string | null;
   customer_notes: string; status: string; payment_status: string;
+  status_comment?: string; status_updated_at?: Date;
   subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
   order_items: Array<{product_name_snapshot:string;quantity:number;unit_price_cents:number;line_total_cents:number}>;
   created_at: Date; updated_at: Date;
