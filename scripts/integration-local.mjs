@@ -110,6 +110,18 @@ try{
  assert.equal(await db.collection('orders').countDocuments(),1);
  const stored=await db.collection('orders').findOne({client_request_id:order.requestId});assert.equal(stored.status,'pending');assert.equal(stored.payment_status,'unpaid');
 
+ assert.equal(stored.order_items[0].product_slug_snapshot,'juwar-roti');
+ for(let i=0;i<4;i++){
+   await expect('/api/orders','POST',{...order,requestId:randomUUID()},201);
+ }
+ const popular=(await expect('/api/storefront','GET',undefined,200)).data.products.find(p=>p.id==='juwar-roti');
+ assert.equal(popular.recentOrders24h,5);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'rejected',status_comment:'Test rejection'},200,cookie);
+ const reduced=(await expect('/api/storefront','GET',undefined,200)).data.products.find(p=>p.id==='juwar-roti');
+ assert.equal(reduced.recentOrders24h,4);
+ await expect('/api/admin','PATCH',{resource:'order',id:String(stored._id),status:'accepted',status_comment:'Test re-confirmation'},200,cookie);
+
+
  // Customers can see only their own order using the correct number AND phone.
  const lookup={orderNumber:created.data.order.number,phone:order.phone};
  const publicPending=await expect('/api/orders/status','POST',lookup,200);
