@@ -104,13 +104,14 @@ function specialFields(b: Record<string, unknown>, creating: boolean) {
     data[key] = v || (key==='image_url'?null:'');
   }
   for (const key of ['starts_at','ends_at'] as const) if (b[key] !== undefined) {
-    const v = b[key]; if (v !== null && (typeof v !== 'string' || !Number.isFinite(Date.parse(v)))) throw new Error('Invalid '+key);
-    data[key] = v;
+    const v = b[key]; if (v !== null && (typeof v !== 'string' || v.length > 40 || !Number.isFinite(Date.parse(v)))) throw new Error('Invalid '+key);
+    data[key] = v === null ? null : new Date(v).toISOString();
   }
   if (b.is_published !== undefined) {
     const v = bool(b.is_published); if (v === null) throw new Error('Invalid publication status'); data.is_published = v;
   }
   if (creating && !data.title) throw new Error('Special title is required');
+  if (data.title !== undefined && !data.title) throw new Error('Special title is required');
   return data;
 }
 function announcementFields(b: Record<string, unknown>, creating: boolean) {
@@ -241,9 +242,13 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (!(await col.deleteOne({ _id:new ObjectId(id) })).deletedCount) return badRequest('Special not found',404);
       } else {
         data = specialFields(b,method==='POST'); if (!Object.keys(data).length) return badRequest('No changes');
-        if (data.starts_at && data.ends_at && new Date(String(data.starts_at)).getTime()>new Date(String(data.ends_at)).getTime()) return badRequest('End must follow start');
+        const existing = method === 'PATCH' ? await col.findOne({ _id: new ObjectId(id) }) : null;
+        if (method === 'PATCH' && !existing) return badRequest('Special not found', 404);
+        const start = data.starts_at !== undefined ? data.starts_at : existing?.starts_at;
+        const end = data.ends_at !== undefined ? data.ends_at : existing?.ends_at;
+        if (start && end && Date.parse(String(start)) > Date.parse(String(end))) return badRequest('End must follow start', 422);
         if (method==='POST') await col.insertOne({ title:'',description:'',image_url:null,is_published:false,starts_at:null,ends_at:null,created_at:new Date(),...data });
-        else if (!(await col.updateOne({ _id:new ObjectId(id) }, { $set:data })).matchedCount) return badRequest('Special not found',404);
+        else await col.updateOne({ _id:new ObjectId(id) }, { $set:data });
       }
     } else if (resource === 'announcement') {
       if (method !== 'POST' && !isId(id)) return badRequest('Invalid announcement ID');
