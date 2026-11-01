@@ -9,7 +9,9 @@ export async function POST(request: NextRequest) {
     if (!authConfigured() || !mongoConfigured()) throw new AccessError(503, 'Administrator sign-in is not configured');
     await rateLimit(request, 'admin-login', 5, 15);
     const b = await parseBody(request, 2500);
-    const email = str(b.email, 200), password = str(b.password, 256);
+    // Passwords are byte-sensitive: do not trim whitespace as the general str() helper does.
+    const email = str(b.email, 200);
+    const password = typeof b.password === 'string' && b.password.length <= 256 ? b.password : '';
     const credentialCheck = email && password ? checkAdminCredentials(email, password) : 'password_mismatch';
     if (credentialCheck !== 'ok') {
       // Opt-in, server-side-only troubleshooting; never log email, password, hash or secret.
