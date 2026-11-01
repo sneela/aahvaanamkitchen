@@ -73,7 +73,7 @@ Google Sites can link to the Netlify-hosted storefront but cannot host Next.js A
 
 ## Release blockers — do not mark complete
 
-Run `npm run audit:launch:strict` as a static release gate. As of October 31, 2026, these items remain:
+Run `npm run audit:launch:strict` as a static release gate. As of November 1, 2026, these items remain:
 
 1. Commit and verify the approved original high-resolution logo and original two-page catalog PDF. The repository currently contains optimized web branding and a small reference PDF, not both originals.
 2. Replace all **31 external illustrative food-photo URLs** with original or properly licensed photos; confirm each photo matches its dish.
@@ -82,6 +82,10 @@ Run `npm run audit:launch:strict` as a static release gate. As of October 31, 20
 5. Verify applicable Ohio food-business licensing, privacy/retention, and any tax requirements before accepting customer orders.
 
 The static audit is intentionally allowed to report blockers without failing normal CI; strict mode fails until the static blockers are addressed. Keep ordering disabled until all legal, operational and live deployment checks pass.
+
+## November 1 quality fixes
+
+The admin login now preserves whitespace in submitted passwords (the password-hash generator already did). Specials and announcements share a timezone-safe `datetime-local` conversion, avoiding a 4–5-hour schedule shift when an administrator edits a saved special. The Specials API also checks effective start/end ranges on partial updates and rejects empty titles. Automated date conversion tests and local-MongoDB integration assertions cover these regressions; a passing source/CI check is not a substitute for a live Netlify login test.
 
 ## Security notes
 
