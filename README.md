@@ -1,5 +1,30 @@
 # Aahvaanam Kitchen — Next.js + MongoDB Atlas
 
+## Free WhatsApp messaging from the Admin Orders tab
+
+In **Admin → Orders**, each order has two free actions:
+
+- **Open WhatsApp with message** — opens WhatsApp Web or the phone app with a prefilled, editable message showing the customer's first name, saved order status, order number, itemized dishes, total, scheduled pickup/delivery time and any kitchen status comment. The message is based on the saved database status, not on an unsaved dropdown selection.
+- **Open chat only** — opens the same customer's WhatsApp chat without a prewritten message.
+
+Use **Preview / edit WhatsApp message** before opening WhatsApp to customize the text, or **Reset to saved order status** for the standard template. After clicking either link, **you must press Send in WhatsApp**; the website does not automatically send or track message delivery. This is WhatsApp's free click-to-chat mechanism, not the paid Business API. The customer must have WhatsApp on the telephone number they provided at checkout. Domestic US 10-digit numbers are converted to +1 before creating the international WhatsApp link; numbers in other countries should include their country code. The browser must have network access to WhatsApp.
+
+For testing without deployment:
+
+```bash
+git fetch origin
+git switch feature/admin-whatsapp-messaging
+git pull origin feature/admin-whatsapp-messaging
+npm install
+npm run test:logic
+npm run typecheck
+npm run dev
+```
+
+No additional MongoDB collections, secrets or environmental variables are needed. This feature does not change live ordering behavior or incur WhatsApp API fees. The admin dashboard still requires a valid login and obtains customers' phone numbers only from authorized order records.
+
+
+## New: popular-item badges, storefront announcements, and anonymous analytics
 **Branch:** `feature/mongodb-free-tier` · **Status:** development / not approved for accepting live orders.
 
 This project is a responsive Next.js 15 / React 19 storefront and kitchen administration application for `aahvaanamkitchen.com`. It is designed to use Netlify serverless functions and MongoDB Atlas M0 without requiring a paid database or a payment processor. The owner reported that Netlify can load MongoDB-backed menu items on October 31, 2026; **administrator sign-in remains unverified**. No automated test can validate the owner's private Netlify settings or Atlas credentials.
