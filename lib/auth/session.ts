@@ -30,13 +30,22 @@ export async function requireAdmin() {
   const cookieStore = await cookies();
   if (!verifySession(cookieStore.get(COOKIE)?.value)) throw new AccessError(401, 'Administrator sign-in required');
 }
-export function verifyPassword(email: string, password: string) {
-  const expectedEmail = process.env.ADMIN_EMAIL || '';
-  const hash = process.env.ADMIN_PASSWORD_HASH || '';
+// Keep the browser response generic. A diagnostic category may be written to
+// private function logs only when explicitly enabled by the site operator.
+export type AdminCredentialCheck = 'ok' | 'email_mismatch' | 'password_mismatch' | 'hash_format_invalid';
+export function checkAdminCredentials(email: string, password: string): AdminCredentialCheck {
+  const expectedEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  // Copy/paste from hosting dashboards can introduce surrounding whitespace.
+  // Do not trim or otherwise normalize the actual password supplied by the user.
+  const hash = (process.env.ADMIN_PASSWORD_HASH || '').trim();
   const [salt, hex, extra] = hash.split(':');
-  if (!salt || !hex || extra || !/^[a-f0-9]{32,128}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hex)) return false;
+  if (!salt || !hex || extra || !/^[a-f0-9]{32,128}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hex)) return 'hash_format_invalid';
   const calculated = scryptSync(password, Buffer.from(salt, 'hex'), 64);
   const valid = timingSafeEqual(calculated, Buffer.from(hex, 'hex'));
-  return valid && email.trim().toLowerCase() === expectedEmail.trim().toLowerCase();
+  if (!valid) return 'password_mismatch';
+  return email.trim().toLowerCase() === expectedEmail ? 'ok' : 'email_mismatch';
+}
+export function verifyPassword(email: string, password: string) {
+  return checkAdminCredentials(email, password) === 'ok';
 }
 export const sessionCookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' as const, path: '/', maxAge: TTL_SECONDS };

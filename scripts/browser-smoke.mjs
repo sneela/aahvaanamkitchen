@@ -30,6 +30,8 @@ try {
   const desktop = await pageFor({ width: 1440, height: 900 });
   await desktop.goto(base, { waitUntil: 'domcontentloaded' });
   await desktop.locator('.product').first().waitFor();
+  assert.ok(await desktop.getByRole('button', { name: 'Refresh menu and announcements' }).isVisible());
+  assert.equal(await desktop.locator('.popular-tag').count(),0,'Offline sample items must not show invented order popularity');
 
   await desktop.locator('.product').first().getByRole('button', { name: 'View details' }).click();
   const details=desktop.getByRole('dialog');
@@ -41,7 +43,7 @@ try {
   await desktop.getByRole('button', { name: 'Add Jowar Roti to cart' }).click();
   await desktop.getByRole('button', { name: 'Cart (1)' }).click();
   await desktop.getByRole('button', { name: 'Continue to request' }).click();
-  assert.ok(await desktop.getByRole('link', { name: /Send request on WhatsApp/ }).isVisible(), 'Offline checkout must clearly offer WhatsApp rather than pretending to save an order');
+  assert.ok(await desktop.getByRole('link', { name: /ask a question on WhatsApp/i }).isVisible(), 'Offline checkout must clearly offer WhatsApp rather than pretending to save an order');
   await desktop.screenshot({ path: 'artifacts/screenshots/desktop-checkout.png', fullPage: false });
   await desktop.getByRole('button', { name: /Close/ }).click();
   await desktop.goto(base + '/catalog');

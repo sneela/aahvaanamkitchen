@@ -19,7 +19,14 @@ export function validateSameOrigin(request: NextRequest) {
     // Netlify's Next.js adapter may expose an internal request URL behind its reverse proxy.
     // Accept the public hostname only when it is a known Aahvaanam host AND matches
     // the inbound host or the platform's forwarded host. Never accept arbitrary origins.
-    const proxyOrigin = submitted.protocol === 'https:' && approvedHosts.has(submitted.hostname.toLowerCase()) &&
+    // Next.js can expose an internal localhost URL while the browser uses
+    // 127.0.0.1 (or vice versa) in local integration tests. Only allow this
+    // mismatch for actual loopback origins whose Host header matches.
+    const hostname = submitted.hostname.toLowerCase();
+    const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+    const allowedOrigin = (submitted.protocol === 'https:' && approvedHosts.has(hostname)) ||
+      (submitted.protocol === 'http:' && loopback);
+    const proxyOrigin = allowedOrigin &&
       (submitted.host.toLowerCase() === requestHost || submitted.host.toLowerCase() === forwardedHost);
     if (!sameOrigin && !proxyOrigin) throw new AccessError(403, 'Cross-site request blocked');
   }

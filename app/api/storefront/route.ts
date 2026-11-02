@@ -27,6 +27,26 @@ export async function GET() {
     const settings = { ...defaultSettings, ...s };
     const names = new Map(categories.map(c => [c.id, c.name]));
     const now = Date.now();
+    const activeSpecials = specials.filter(s =>
+      (!s.starts_at || new Date(s.starts_at).getTime() <= now) &&
+      (!s.ends_at || new Date(s.ends_at).getTime() >= now)
+    );
+    const activeAnnouncements = announcements.filter(a =>
+      (!a.starts_at || Date.parse(String(a.starts_at)) <= now) &&
+      (!a.ends_at || Date.parse(String(a.ends_at)) >= now)
+    );
+    // If no top-of-page announcements are active, feature currently published
+    // Specials at the top, too. Both are saved in MongoDB, never hard-coded.
+    const topBanners = activeAnnouncements.length
+      ? activeAnnouncements.slice(0,3).map(a => ({
+          id: String(a._id), title: String(a.title || ''), message: String(a.message || ''),
+          kind: a.kind === 'special' ? 'special' : 'notice',
+          actionLabel: String(a.action_label || ''), actionHref: String(a.action_href || ''),
+        }))
+      : activeSpecials.slice(0,3).map(s => ({
+          id: String(s._id), title: String(s.title || ''), message: String(s.description || ''),
+          kind: 'special', actionLabel: 'See specials', actionHref: '#specials',
+        }));
     // Actual placed orders only: each order contributes once for each product type.
     // Older orders lack a stored slug, so match their original item names only.
     const recentBySlug = new Map<string, number>();
@@ -58,16 +78,9 @@ export async function GET() {
         minimumNoticeHours: settings.minimum_notice_hours, defaultPreorderNoticeHours: settings.default_preorder_notice_hours,
         maxAdvanceDays: settings.max_advance_days, whatsappNumber: settings.whatsapp_number,
         serviceArea: settings.service_area_description },
-      specials: specials.filter(s => (!s.starts_at || new Date(s.starts_at).getTime() <= now) && (!s.ends_at || new Date(s.ends_at).getTime() >= now)).map(serialize),
+      specials: activeSpecials.map(serialize),
       reviews: reviews.map(serialize),
-      announcements: announcements.filter(a =>
-        (!a.starts_at || Date.parse(String(a.starts_at)) <= now) &&
-        (!a.ends_at || Date.parse(String(a.ends_at)) >= now)
-      ).slice(0, 3).map(a => ({
-        id: String(a._id), title: String(a.title || ''), message: String(a.message || ''),
-        kind: a.kind === 'special' ? 'special' : 'notice',
-        actionLabel: String(a.action_label || ''), actionHref: String(a.action_href || ''),
-      })),
+      announcements: topBanners,
     }, { headers: noStore });
   } catch (e) { console.error('Storefront read failed', e); return NextResponse.json({ error: 'Menu temporarily unavailable' }, { status: 503, headers: noStore }); }
 }
