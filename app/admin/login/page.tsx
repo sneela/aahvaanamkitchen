@@ -10,7 +10,7 @@ export default function AdminLogin() {
     event.preventDefault(); setLoading(true); setError('');
     try {
       const response = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
-      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Unable to sign in'); }
+      if (!response.ok) { const data = await response.json(); const trace = response.headers.get('X-Auth-Trace'); throw new Error((data.error || 'Unable to sign in') + (trace ? ' (reference ' + trace + ')' : '')); }
       router.replace('/admin'); router.refresh();
     } catch(e) { setError(e instanceof Error ? e.message : 'Unable to sign in'); }
     finally { setLoading(false); }
