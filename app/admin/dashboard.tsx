@@ -5,6 +5,7 @@ import { CatalogManager, CategoryManager } from './catalog-manager';
 import OrderManager, { type AdminOrder } from './order-manager';
 import AnnouncementManager, { type Announcement } from './announcement-manager';
 import AnalyticsDashboard from './analytics-dashboard';
+import { isoToLocalDateTimeInput, localDateTimeInputToIso } from '@/lib/datetime-local';
 type RecordItem = {id:string;[key:string]:any};
 type Data = {orders:AdminOrder[];products:RecordItem[];categories:{id:string;name:string;is_active:boolean;sort_order:number}[];settings:Record<string,any>;specials:RecordItem[];reviews:RecordItem[];catering:RecordItem[];announcements:Announcement[]};
 const tabs=['Orders','Menu','Categories','Announcements','Analytics','Settings','Specials','Reviews','Catering'] as const;
@@ -14,8 +15,10 @@ function SpecialEditor({s,save,remove,busy}:{s:RecordItem;save:(v:Record<string,
  const [v,setV]=useState<Record<string,any>>({...s});return <article className="admin-card"><h3>{s.id?s.title:'New special'}</h3><form onSubmit={e=>{e.preventDefault();void save({resource:'special',...(s.id?{id:s.id}:{}),title:v.title,description:v.description||'',is_published:Boolean(v.is_published),starts_at:v.starts_at||null,ends_at:v.ends_at||null,image_url:v.image_url||null})}}>
  <label className="wide">Title<input required maxLength={120} value={v.title||''} onChange={e=>setV({...v,title:e.target.value})}/></label>
  <label className="wide">Description<textarea maxLength={2000} value={v.description||''} onChange={e=>setV({...v,description:e.target.value})}/></label>
- <label>Start (ISO date/time)<input type="datetime-local" value={v.starts_at?v.starts_at.slice(0,16):''} onChange={e=>setV({...v,starts_at:e.target.value?new Date(e.target.value).toISOString():null})}/></label>
- <label>End (ISO date/time)<input type="datetime-local" value={v.ends_at?v.ends_at.slice(0,16):''} onChange={e=>setV({...v,ends_at:e.target.value?new Date(e.target.value).toISOString():null})}/></label>
+ <label className="wide">Special photo URL (optional, HTTPS)<input type="url" maxLength={500} placeholder="https://your-image-host.example/special.jpg" value={v.image_url||''} onChange={e=>setV({...v,image_url:e.target.value})}/></label>
+ <p className="quiet wide">Use only a food photo you own or are licensed to display. Leave blank to show a text-only special.</p>
+ <label>Start (ISO date/time)<input type="datetime-local" value={isoToLocalDateTimeInput(v.starts_at)} onChange={e=>setV({...v,starts_at:localDateTimeInputToIso(e.target.value)})}/></label>
+ <label>End (ISO date/time)<input type="datetime-local" value={isoToLocalDateTimeInput(v.ends_at)} onChange={e=>setV({...v,ends_at:localDateTimeInputToIso(e.target.value)})}/></label>
  <label><input type="checkbox" checked={Boolean(v.is_published)} onChange={e=>setV({...v,is_published:e.target.checked})}/> Published</label>
  <div className="wide"><button className="primary" disabled={busy}>Save special</button>{remove&&<button type="button" className="danger" disabled={busy} onClick={()=>{if(confirm('Delete special?'))void remove()}}>Delete</button>}</div></form></article>;
 }

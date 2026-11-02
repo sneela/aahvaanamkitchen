@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { isoToLocalDateTimeInput, localDateTimeInputToIso } from '@/lib/datetime-local';
 
 export type Announcement = {
   id: string; title: string; message: string; kind: 'notice' | 'special';
@@ -20,8 +21,6 @@ function visibility(a:Announcement):BannerVisibility {
     return {label:'Expired — hidden',details:'Change or remove the end time and save to display it again.',state:'expired'};
   return {label:'Live on website',details:'This banner is currently published and should appear at the top of the storefront. Refresh the website tab if it is already open.',state:'live'};
 }
-const inputDate = (date: string | null) => { if (!date) return ''; const d = new Date(date); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
-const timeValue = (local: string) => local ? new Date(local).toISOString() : null;
 
 function AnnouncementFields({ value, change, busy }: { value: Announcement; change:(next:Announcement)=>void;busy:boolean }) {
   const field = <K extends keyof Announcement>(key:K, next:Announcement[K])=>change({...value,[key]:next});
@@ -31,8 +30,8 @@ function AnnouncementFields({ value, change, busy }: { value: Announcement; chan
     <label className="wide">Banner message<input required maxLength={280} value={value.message} disabled={busy} onChange={e=>field('message',e.target.value)} placeholder="e.g. Fresh Bobbatlu available for Sunday pre-orders" /></label>
     <label>Link text (optional)<input maxLength={50} disabled={busy} value={value.action_label} onChange={e=>field('action_label',e.target.value)} placeholder="e.g. See menu" /></label>
     <label>Link destination (optional)<input maxLength={150} disabled={busy} value={value.action_href} onChange={e=>field('action_href',e.target.value)} placeholder="#menu or /catalog" /></label>
-    <label>Starts (optional)<input type="datetime-local" disabled={busy} value={inputDate(value.starts_at)} onChange={e=>field('starts_at',timeValue(e.target.value))} /></label>
-    <label>Ends (optional)<input type="datetime-local" disabled={busy} value={inputDate(value.ends_at)} onChange={e=>field('ends_at',timeValue(e.target.value))} /></label>
+    <label>Starts (optional)<input type="datetime-local" disabled={busy} value={isoToLocalDateTimeInput(value.starts_at)} onChange={e=>field('starts_at',localDateTimeInputToIso(e.target.value))} /></label>
+    <label>Ends (optional)<input type="datetime-local" disabled={busy} value={isoToLocalDateTimeInput(value.ends_at)} onChange={e=>field('ends_at',localDateTimeInputToIso(e.target.value))} /></label>
     <label>Display order<input type="number" min="-100000" max="100000" disabled={busy} value={value.sort_order} onChange={e=>field('sort_order',Number(e.target.value))} /></label>
     <label className="admin-check"><input type="checkbox" checked={value.is_published} disabled={busy} onChange={e=>field('is_published',e.target.checked)} /> Publish banner (checked by default for new notices)</label>
     <p className="wide admin-hint">Published banners appear above the website header during their scheduled period. Lower display-order numbers appear first. Links must stay within this website.</p>

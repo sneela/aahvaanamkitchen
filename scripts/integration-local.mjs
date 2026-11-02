@@ -5,9 +5,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { MongoClient } from 'mongodb';
 const localUri=/^mongodb:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|\?|$)/;
 if (!process.env.MONGODB_URI || !localUri.test(process.env.MONGODB_URI)) throw Error('This test is restricted to a local MongoDB instance only');
-const dbName='aahvaanam_ci_'+Date.now(),password='IntegrationOnly-'+randomUUID();
+// Surrounding spaces are valid password characters and must survive the login request.
+const dbName='aahvaanam_ci_'+Date.now(),password=' IntegrationOnly-'+randomUUID()+' ';
 const salt=randomBytes(16).toString('hex'),hash=scryptSync(password,Buffer.from(salt,'hex'),64).toString('hex');
-const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:salt+':'+hash,SESSION_SECRET:randomBytes(40).toString('hex'),RESEND_API_KEY:'',TWILIO_ACCOUNT_SID:'',TWILIO_AUTH_TOKEN:''};
+const env={...process.env,MONGODB_DB_NAME:dbName,ADMIN_EMAIL:'admin@example.test',ADMIN_PASSWORD_HASH:'  '+salt+':'+hash+' \n',SESSION_SECRET:randomBytes(40).toString('hex'),RESEND_API_KEY:'',TWILIO_ACCOUNT_SID:'',TWILIO_AUTH_TOKEN:''};
 const client=new MongoClient(env.MONGODB_URI,{serverSelectionTimeoutMS:5000});
 let child,logs='';
 const base='http://127.0.0.1:3218';
@@ -168,6 +169,15 @@ try{
  const published=await expect('/api/storefront','GET',undefined,200);assert.equal(published.data.reviews.length,1);
  await expect('/api/admin','POST',{resource:'special',title:'Integration Festival Special',description:'Available by advance request',is_published:true},200,cookie);
  const special=await expect('/api/storefront','GET',undefined,200);assert.equal(special.data.specials.length,1);
+ const savedSpecial=(await expect('/api/admin','GET',undefined,200,cookie)).data.specials[0];
+ const tomorrow=new Date(Date.now()+86400000).toISOString(), yesterday=new Date(Date.now()-86400000).toISOString();
+ await expect('/api/admin','PATCH',{resource:'special',id:savedSpecial.id,ends_at:tomorrow},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'special',id:savedSpecial.id,starts_at:new Date(Date.now()+2*86400000).toISOString()},422,cookie);
+ await expect('/api/admin','PATCH',{resource:'special',id:savedSpecial.id,starts_at:yesterday},200,cookie);
+ await expect('/api/admin','PATCH',{resource:'special',id:savedSpecial.id,title:''},400,cookie);
+ const scheduledSpecial=(await expect('/api/admin','GET',undefined,200,cookie)).data.specials[0];
+ assert.equal(scheduledSpecial.starts_at,yesterday);
+ assert.equal(scheduledSpecial.ends_at,tomorrow);
  assert.equal(special.data.announcements.length,1,'Published Specials are shown as a banner when no announcement is live');
  assert.equal(special.data.announcements[0].title,'Integration Festival Special');
  assert.equal(special.data.announcements[0].actionHref,'#specials');
