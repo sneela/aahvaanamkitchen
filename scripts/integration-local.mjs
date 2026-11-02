@@ -28,7 +28,9 @@ try{
  const store=await expect('/api/storefront','GET',undefined,200);assert.equal(store.data.connected,true);assert.equal(store.data.products.length,31);assert.equal(store.data.settings.orderingEnabled,false);
  await expect('/api/orders','POST',{},400); // Validation runs before the ordering-enabled check.
  await expect('/api/admin','GET',undefined,401);
- await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password:'incorrect'},401);
+ const deniedLogin=await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password:'incorrect'},401);
+ assert.match(deniedLogin.headers.get('x-auth-trace') || '',/^[a-f0-9-]{36}$/i,'Failed login must expose only a random diagnostic reference');
+ assert.equal(deniedLogin.data.error,'Invalid email or password');
  const login=await expect('/api/auth/login','POST',{email:env.ADMIN_EMAIL,password},200);
  const cookie=login.headers.get('set-cookie')?.split(';')[0];assert.ok(cookie?.startsWith('aahvaanam_admin='));
  for(let i=0;i<3;i++){
