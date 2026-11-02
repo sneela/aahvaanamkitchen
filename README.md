@@ -95,6 +95,8 @@ If the menu loads but admin login returns `401 Invalid email or password`, the a
 
 Google Sites can link to the Netlify-hosted storefront but cannot host Next.js APIs or the MongoDB backend. Do not embed the admin page in Google Sites. See [GOOGLE-SITES-INTEGRATION.md](GOOGLE-SITES-INTEGRATION.md).
 
+For the latest verification status and unresolved launch gates, read [RELEASE-STATUS.md](RELEASE-STATUS.md).
+
 ## Release blockers — do not mark complete
 
 Run `npm run audit:launch:strict` as a static release gate. As of November 1, 2026, these items remain:
