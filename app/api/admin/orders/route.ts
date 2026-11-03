@@ -16,13 +16,12 @@ export async function GET(request: NextRequest) {
     const offset = Number(raw);
     const db = await mongoDb();
     const search = (request.nextUrl.searchParams.get('q') || '').trim().slice(0, 100);
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\    const db = await mongoDb();
-    const orders = await db.collection<OrderDoc>('orders').find()');
+    const escaped = search.replace(/[^a-zA-Z0-9 ]/g, ch => String.fromCharCode(92) + ch);
     const query = search ? { $or: [
       { customer_name: { $regex: escaped, $options: 'i' } },
       { customer_phone: { $regex: escaped, $options: 'i' } },
       { 'order_items.product_name_snapshot': { $regex: escaped, $options: 'i' } },
-      ...( /^\\d+$/.test(search) ? [{ order_number: Number(search) }] : [] ),
+      ...( /^[0-9]+$/.test(search) ? [{ order_number: Number(search) }] : [] ),
     ] } : {};
     const orders = await db.collection<OrderDoc>('orders').find(query)
       .sort({ created_at: -1, _id: -1 }).skip(offset).limit(PAGE_SIZE).toArray();
