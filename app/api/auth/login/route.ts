@@ -31,7 +31,13 @@ export async function POST(request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch (e) {
-    if (e instanceof AccessError) console.warn('Admin login rejected', { status: e.status, trace });
+    if (e instanceof AccessError) {
+      console.warn('Admin login rejected', { status: e.status, trace });
+    } else {
+      // Do not log the raw exception: driver errors can contain connection details.
+      // This category helps diagnose TLS/Atlas outages without exposing credentials.
+      console.error('Admin login server failure', { reason: 'unexpected_server_error', trace });
+    }
     const response = jsonError(e, 'Unable to sign in');
     response.headers.set('X-Auth-Trace', trace);
     response.headers.set('Cache-Control', 'no-store');
