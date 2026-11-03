@@ -4,6 +4,7 @@ import { defaultSettings, type OrderDoc, type ProductDoc, type SettingsDoc } fro
 import { badRequest, isDate, isTime, isUuid, jsonError, parseBody, str, int } from '@/lib/api';
 import { easternDateTimeMs } from '@/lib/time';
 import { rateLimit } from '@/lib/mongodb/limits';
+import { notifyAdminDevices } from '@/lib/notifications/web-push';
 import { notifyOwnerNewOrder } from '@/lib/notifications/order-alerts';
 export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
       }
       throw e;
     }
-    await notifyOwnerNewOrder(order);
+    await Promise.allSettled([notifyOwnerNewOrder(order), notifyAdminDevices(order.order_number)]);
     return NextResponse.json({ order: { number: order.order_number, totalCents: order.total_cents, deliveryFeeCents: fee, status: 'pending' } }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return jsonError(e, 'Unable to submit order request'); }
 }
