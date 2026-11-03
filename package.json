@@ -18,7 +18,8 @@
     "smoke:offline": "node scripts/smoke-offline.mjs",
     "test:integration": "node scripts/integration-local.mjs",
     "mongo:verify": "node scripts/verify-mongodb.mjs",
-    "smoke:browser": "node scripts/browser-smoke.mjs"
+    "smoke:browser": "node scripts/browser-smoke.mjs",
+    "mongo:import:history": "node scripts/import-historical-orders-2026.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",
