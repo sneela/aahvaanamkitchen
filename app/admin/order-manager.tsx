@@ -93,7 +93,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
   const [refreshing, setRefreshing] = useState(false);
   const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
   const [refreshError, setRefreshError] = useState('');
-  const todayEastern = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const todayEastern = () => { const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const part = (type: string) => parts.find(p => p.type === type)?.value || ''; return `${part('year')}-${part('month')}-${part('day')}`; };
   const addDays = (iso: string, days: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
   const refresh = async () => {
     if (refreshing) return;
