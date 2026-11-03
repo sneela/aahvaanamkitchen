@@ -14,6 +14,8 @@ type OrderLookup = {
   items: { name: string; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
   subtotalCents: number;
   deliveryFeeCents: number;
+  discountCents?: number;
+  discountReason?: string;
   totalCents: number;
 };
 
@@ -76,6 +78,7 @@ export default function OrderTracker({ initialOrderNumber }: { initialOrderNumbe
       <div className="track-items"><h4>Items</h4>{found.items.map((i, index) => <div className="track-item" key={index}><span>{i.quantity} × {i.name} <small>({money(i.unitPriceCents)} each)</small></span><strong>{money(i.lineTotalCents)}</strong></div>)}</div>
       <div className="track-item"><span>Subtotal</span><strong>{money(found.subtotalCents)}</strong></div>
       <div className="track-item"><span>Delivery</span><strong>{money(found.deliveryFeeCents)}</strong></div>
+      {Boolean(found.discountCents) && <div className="track-item"><span>Discount{found.discountReason ? ' (' + found.discountReason + ')' : ''}</span><strong>−{money(found.discountCents || 0)}</strong></div>}
       <div className="track-item track-total"><span>Total</span><strong>{money(found.totalCents)}</strong></div>
       <p className="quiet">Payment: {found.paymentStatus}. No online payment is collected. Any order changes are confirmed manually.</p>
     </section>}
