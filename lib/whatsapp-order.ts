@@ -20,7 +20,19 @@ export type OrderForWhatsApp = {
   }>;
 };
 
-const price = (cents: number) => '
+const price = (cents: number) => '$' + (cents / 100).toFixed(2);
+function displayEasternTime(time: string, date: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!match) return time + ' ET';
+  const hour = Number(match[1]);
+  if (hour > 23) return time + ' ET';
+  const formatted = String(hour % 12 || 12) + ':' + match[2] + (hour < 12 ? ' AM' : ' PM');
+  const instant = new Date(date + 'T12:00:00Z');
+  const zone = Number.isNaN(instant.getTime()) ? 'ET' :
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' })
+      .formatToParts(instant).find(part => part.type === 'timeZoneName')?.value || 'ET';
+  return formatted + ' ' + zone;
+}
 
 /** US domestic 10-digit numbers get country code 1; other numbers must already include a country code. */
 export function whatsappPhone(raw: string): string | null {
