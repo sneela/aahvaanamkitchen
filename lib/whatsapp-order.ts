@@ -12,6 +12,7 @@ export type OrderForWhatsApp = {
   requested_date: string;
   requested_time: string;
   total_cents: number;
+  discount_cents?: number;
   order_items: Array<{
     product_name_snapshot: string;
     quantity: number;
@@ -66,6 +67,7 @@ export function whatsappOrderMessage(order: OrderForWhatsApp): string {
     'Items:',
     ...items,
     '',
+    ...(order.discount_cents ? ['Discount: -' + price(order.discount_cents)] : []),
     'Total: ' + price(order.total_cents),
     'Requested ' + order.fulfillment + ': ' + order.requested_date + ' at ' + displayEasternTime(order.requested_time, order.requested_date),
     '',
