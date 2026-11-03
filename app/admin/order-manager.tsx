@@ -95,6 +95,8 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
 
 export default function OrderManager({ orders, busy, save }: { orders: AdminOrder[]; busy: boolean; save: Save }) {
   const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [dateMode, setDateMode] = useState<'all'|'today'|'tomorrow'|'next2'|'custom'>('all');
   const [startDate, setStartDate] = useState('');
@@ -108,7 +110,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     if (refreshing) return;
     setRefreshing(true); setRefreshError('');
     try {
-      const response = await fetch('/api/admin/orders?offset=0', { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=0&q=' + encodeURIComponent(query), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
       setFreshOrders(json.orders);
@@ -117,6 +119,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     } catch (e) { setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
     finally { setRefreshing(false); }
   };
+  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [query]);
   const [olderOrders, setOlderOrders] = useState<AdminOrder[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(orders.length === 100 ? 100 : null);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -132,7 +135,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     if (nextOffset === null || loadingOlder) return;
     setLoadingOlder(true); setOlderError('');
     try {
-      const response = await fetch('/api/admin/orders?offset=' + nextOffset, { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=' + nextOffset + '&q=' + encodeURIComponent(query), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to load older orders');
       setOlderOrders(previous => [...previous, ...json.orders]);
@@ -147,8 +150,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     const to = dateMode === 'today' ? today : dateMode === 'tomorrow' ? addDays(today, 1) : dateMode === 'next2' ? addDays(today, 2) : dateMode === 'custom' ? endDate : '';
     if (from && o.requested_date < from) return false;
     if (to && o.requested_date > to) return false;
-    const text = [o.order_number, o.customer_name, o.customer_phone, ...o.order_items.map(i => i.product_name_snapshot)].join(' ').toLowerCase();
-    return text.includes(search.trim().toLowerCase());
+    return true;
   });
   return <section className="admin-orders">
     <div className="admin-section-heading"><div><h2>Customer orders</h2><p>Review every item, confirm or reject requests, and leave customer-visible updates.</p></div><strong>{loadedOrders.filter(o => o.status === 'pending').length} pending in loaded orders</strong></div>
@@ -164,7 +166,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
     </tr></thead><tbody>
       {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} />)}
-      {!shown.length && <tr><td colSpan={7}>No matching orders in the loaded list.</td></tr>}
+      {!shown.length && <tr><td colSpan={7}>No matching orders found.</td></tr>}
     </tbody></table></div>
     {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
     {olderError && <p role="alert" className="admin-error">{olderError}</p>}
