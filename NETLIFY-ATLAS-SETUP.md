@@ -82,3 +82,7 @@ Reason categories:
 If the new `X-Auth-Trace` header is missing, the domain is likely still serving an older build, a different Netlify site/branch, or a proxy response. Check the production deploy's **published commit** and compare it with the commit containing this improvement before troubleshooting credentials. Netlify environment variables may be scoped separately to Production and Deploy Previews; ensure the server runtime has access. **Never paste secret values into a support message or public issue.**
 
 The local unit tests check valid and invalid scrypt hashes, email normalization, whitespace-sensitive passwords and malformed hashes. These tests **cannot** validate private Netlify values or the actual production domain. Do not turn on ordering until the live login, logout and administrative workflows have been verified.
+
+### Diagnosing an unexpected 500 without leaking secrets
+
+Starting with the November 3 feature-branch update, unexpected login exceptions are logged privately as `Admin login server failure` with `reason: unexpected_server_error` and an `X-Auth-Trace` correlation ID. The raw MongoDB exception is intentionally not logged because it may contain connection details. A 500 requires checking Atlas/Netlify runtime connectivity separately; it does **not** prove a password mismatch. The log change is only available on the deployment that contains this commit, not automatically on an older `main` deploy. Never paste request payloads, cookies, database URIs, or secret values into support chats.
