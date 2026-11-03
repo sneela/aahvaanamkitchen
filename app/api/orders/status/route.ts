@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         date: order.requested_date,
         time: order.requested_time,
         items: order.order_items.map(i => ({
-          name: i.product_name_snapshot, quantity: i.quantity,
+          name: i.product_name_snapshot, unitLabel: i.unit_label_snapshot || '', quantity: i.quantity,
           unitPriceCents: i.unit_price_cents, lineTotalCents: i.line_total_cents,
         })),
         subtotalCents: order.subtotal_cents,
