@@ -1,7 +1,8 @@
 import 'server-only';
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { AccessError } from '@/lib/api';
+import { checkAdminCredentialsAgainst, type AdminCredentialCheck } from './credentials';
 export const COOKIE = 'aahvaanam_admin';
 const TTL_SECONDS = 60 * 60 * 12;
 function secret() {
@@ -30,20 +31,10 @@ export async function requireAdmin() {
   const cookieStore = await cookies();
   if (!verifySession(cookieStore.get(COOKIE)?.value)) throw new AccessError(401, 'Administrator sign-in required');
 }
-// Keep the browser response generic. A diagnostic category may be written to
-// private function logs only when explicitly enabled by the site operator.
-export type AdminCredentialCheck = 'ok' | 'email_mismatch' | 'password_mismatch' | 'hash_format_invalid';
+// Keep the browser response generic. Only a reason category is logged privately.
+export type { AdminCredentialCheck } from './credentials';
 export function checkAdminCredentials(email: string, password: string): AdminCredentialCheck {
-  const expectedEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  // Copy/paste from hosting dashboards can introduce surrounding whitespace.
-  // Do not trim or otherwise normalize the actual password supplied by the user.
-  const hash = (process.env.ADMIN_PASSWORD_HASH || '').trim();
-  const [salt, hex, extra] = hash.split(':');
-  if (!salt || !hex || extra || !/^[a-f0-9]{32,128}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hex)) return 'hash_format_invalid';
-  const calculated = scryptSync(password, Buffer.from(salt, 'hex'), 64);
-  const valid = timingSafeEqual(calculated, Buffer.from(hex, 'hex'));
-  if (!valid) return 'password_mismatch';
-  return email.trim().toLowerCase() === expectedEmail ? 'ok' : 'email_mismatch';
+  return checkAdminCredentialsAgainst(email, password, process.env.ADMIN_EMAIL || '', process.env.ADMIN_PASSWORD_HASH || '');
 }
 export function verifyPassword(email: string, password: string) {
   return checkAdminCredentials(email, password) === 'ok';

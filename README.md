@@ -24,7 +24,6 @@ npm run dev
 No additional MongoDB collections, secrets or environmental variables are needed. This feature does not change live ordering behavior or incur WhatsApp API fees. The admin dashboard still requires a valid login and obtains customers' phone numbers only from authorized order records.
 
 
-## New: popular-item badges, storefront announcements, and anonymous analytics
 **Branch:** `feature/mongodb-free-tier` · **Status:** development / not approved for accepting live orders.
 
 This project is a responsive Next.js 15 / React 19 storefront and kitchen administration application for `aahvaanamkitchen.com`. It is designed to use Netlify serverless functions and MongoDB Atlas M0 without requiring a paid database or a payment processor. The owner reported that Netlify can load MongoDB-backed menu items on October 31, 2026; **administrator sign-in remains unverified**. No automated test can validate the owner's private Netlify settings or Atlas credentials.
@@ -92,9 +91,11 @@ The integration script refuses non-local MongoDB URIs and uses a disposable data
 
 Read [NETLIFY-ATLAS-SETUP.md](NETLIFY-ATLAS-SETUP.md). Use Node 22, `npm run build`, and configure secrets for the **Functions** runtime in the correct deploy context. Do not expose server secrets as `NEXT_PUBLIC_*` variables.
 
-If the menu loads but admin login returns `401 Invalid email or password`, the app has reached the login route; check the deployed `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`. For a short private diagnostic, set `AUTH_LOGIN_DIAGNOSTICS=1`, redeploy, attempt one login, and inspect Netlify **Functions logs** for the reason category. The browser response stays generic and no email, password or hash is logged. Remove the diagnostic variable and redeploy after troubleshooting.
+If the menu loads but admin login returns `401 Invalid email or password`, the app has reached the login route; check the deployed `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH`. On the November 2 diagnostic revision or later, a rejected login writes a sanitized reason category and random trace to private Netlify **Functions logs** without logging email, password or hash. The browser response remains generic and includes an `X-Auth-Trace` reference. On older deployments only, `AUTH_LOGIN_DIAGNOSTICS=1` and a redeploy are needed. Compare the domain's published commit to the source commit before changing credentials.
 
 Google Sites can link to the Netlify-hosted storefront but cannot host Next.js APIs or the MongoDB backend. Do not embed the admin page in Google Sites. See [GOOGLE-SITES-INTEGRATION.md](GOOGLE-SITES-INTEGRATION.md).
+
+For the latest verification status and unresolved launch gates, read [RELEASE-STATUS.md](RELEASE-STATUS.md).
 
 ## Release blockers — do not mark complete
 

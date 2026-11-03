@@ -67,16 +67,22 @@ The site can remain at its `*.netlify.app` address until ready. To connect `aahv
 
 Official docs: [Netlify Next.js](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/), [Netlify external DNS](https://docs.netlify.com/manage/domains/configure-domains/configure-external-dns/), [Atlas connection](https://www.mongodb.com/docs/atlas/connect-to-database-deployment/).
 
-## 7. Troubleshooting: “Invalid email or password” after a successful deploy
+## 7. Troubleshooting: 401 on the production domain
 
-A `401` from `POST /api/auth/login` means the function is running but the credentials do not match. It does **not** mean Atlas is unreachable. The login checks `ADMIN_EMAIL` and a scrypt hash in `ADMIN_PASSWORD_HASH`; it does not use your Atlas website password.
+A `401` from `POST /api/auth/login` means the login endpoint rejected the submitted credentials; it is **not** proof of a successful MongoDB write or a verified production login. A `500` with `MongoServerSelectionError` indicates a separate Atlas network/TLS failure during rate limiting. A `503` indicates missing server configuration and a `429` indicates too many attempts.
 
-If you have already regenerated the hash and redeployed, temporarily add `AUTH_LOGIN_DIAGNOSTICS=1` as a Netlify **Functions** environment variable for the same deploy context as the website, then deploy once. Attempt **one** login and inspect **Netlify → Logs → Functions** for `Admin login denied`. The server-only reason will be one of:
+From the deployment containing the November 2 login-diagnostics improvement onward, every rejected login produces a **sanitized private Netlify Functions log** entry named `Admin login denied` with a reason category and a random `trace`. The browser still sees only `Invalid email or password`; the response has an `X-Auth-Trace` header and the sign-in page shows the same reference. Match that reference to the Functions log for the *same production deploy* (not Build logs or deploy-preview logs). No email, password, password hash, URI or session token is logged. Older deployments require `AUTH_LOGIN_DIAGNOSTICS=1` and a redeploy for the equivalent private reason log.
 
-- `hash_format_invalid`: the configured hash is not exactly a hex salt, colon, and 128 hex characters. Paste only the value after `ADMIN_PASSWORD_HASH=` (no variable name or quotes). The generator currently uses a 64-character salt and 128-character derived hash.
-- `password_mismatch`: the password entered does not match the configured hash. Generate a new hash locally and redeploy with the new value; use the **password**, not the hash, on the sign-in form.
-- `email_mismatch`: the password matched, but the submitted email differs from `ADMIN_EMAIL` in the deployed function. Check the exact address and deploy context.
-  
-The browser always receives the same generic `401` response. **Do not share the function's environment values, request body, cookies, or credentials.** After diagnosing the problem, delete `AUTH_LOGIN_DIAGNOSTICS` or set it to `0` and redeploy. Netlify secret values may be masked in the dashboard but are still available to properly scoped server functions. If there is no `Admin login denied` entry, confirm that the request reached the expected production deploy and wasn't rejected earlier by rate limiting (`429`) or missing configuration (`503`).
+Reason categories:
 
-This diagnostic never verifies a live deployment automatically. The operator must check the private Netlify logs and test login.
+- `hash_format_invalid`: `ADMIN_PASSWORD_HASH` is not exactly a hex salt, colon, and 128 hex characters. Use **only the hash value**, not `ADMIN_PASSWORD_HASH=` or surrounding quotes.
+- `password_mismatch`: the password entered is not the password from which the deployed hash was generated. Re-run `npm run admin:hash` privately, replace the hash in the same production deploy context, and deploy again.
+- `email_mismatch`: the password matched but the submitted email differs from `ADMIN_EMAIL` in the deployed function. Verify the exact email and environment context.
+
+If the new `X-Auth-Trace` header is missing, the domain is likely still serving an older build, a different Netlify site/branch, or a proxy response. Check the production deploy's **published commit** and compare it with the commit containing this improvement before troubleshooting credentials. Netlify environment variables may be scoped separately to Production and Deploy Previews; ensure the server runtime has access. **Never paste secret values into a support message or public issue.**
+
+The local unit tests check valid and invalid scrypt hashes, email normalization, whitespace-sensitive passwords and malformed hashes. These tests **cannot** validate private Netlify values or the actual production domain. Do not turn on ordering until the live login, logout and administrative workflows have been verified.
+
+### Diagnosing an unexpected 500 without leaking secrets
+
+Starting with the November 3 feature-branch update, unexpected login exceptions are logged privately as `Admin login server failure` with `reason: unexpected_server_error` and an `X-Auth-Trace` correlation ID. The raw MongoDB exception is intentionally not logged because it may contain connection details. A 500 requires checking Atlas/Netlify runtime connectivity separately; it does **not** prove a password mismatch. The log change is only available on the deployment that contains this commit, not automatically on an older `main` deploy. Never paste request payloads, cookies, database URIs, or secret values into support chats.
