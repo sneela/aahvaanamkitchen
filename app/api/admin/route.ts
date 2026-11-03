@@ -229,6 +229,23 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (typeof b.status_comment !== 'string' || b.status_comment.length > 1000) return badRequest('Invalid customer comment');
         data.status_comment = b.status_comment.trim();
       }
+      if (b.discount_type !== undefined || b.discount_value !== undefined || b.discount_reason !== undefined) {
+        const existing = await db.collection('orders').findOne({ _id: new ObjectId(id) });
+        if (!existing) return badRequest('Order not found', 404);
+        const type = b.discount_type === undefined ? (existing.discount_type || 'none') : b.discount_type;
+        const value = b.discount_value === undefined ? (existing.discount_value || 0) : b.discount_value;
+        if (!['none', 'fixed', 'percent'].includes(String(type)) || typeof value !== 'number' || !Number.isFinite(value) || value < 0)
+          return badRequest('Invalid discount', 422);
+        if (type === 'percent' && value > 100) return badRequest('Percentage cannot exceed 100', 422);
+        if (type === 'fixed' && (!Number.isInteger(value) || value > existing.subtotal_cents))
+          return badRequest('Fixed discount cannot exceed food subtotal', 422);
+        const amount = type === 'none' ? 0 : type === 'fixed' ? value : Math.round(existing.subtotal_cents * value / 100);
+        const reason = b.discount_reason === undefined ? (existing.discount_reason || '') : b.discount_reason;
+        if (typeof reason !== 'string' || reason.length > 250) return badRequest('Invalid discount reason', 422);
+        data.discount_type = type; data.discount_value = type === 'none' ? 0 : value;
+        data.discount_cents = amount; data.discount_reason = reason.trim();
+        data.total_cents = existing.subtotal_cents - amount + existing.delivery_fee_cents;
+      }
       if (data.status === 'rejected' && !data.status_comment) return badRequest('Add an explanation before rejecting an order',422);
       if (!Object.keys(data).length) return badRequest('No changes');
       const timestamp = new Date();
