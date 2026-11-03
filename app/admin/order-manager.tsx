@@ -10,7 +10,7 @@ export type AdminOrder = {
   delivery_address?: string | null; customer_notes?: string; created_at?: string;
   status: string; status_comment?: string; status_updated_at?: string;
   payment_status: string; discount_type?: 'none' | 'fixed' | 'percent'; discount_value?: number; discount_cents?: number; discount_reason?: string; subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
-  order_items: { product_name_snapshot: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
+  order_items: { product_name_snapshot: string; unit_label_snapshot?: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
 };
 type Save = (method: 'PATCH', payload: Record<string, unknown>) => Promise<boolean>;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
@@ -63,7 +63,7 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
     <td><strong>{order.requested_date}</strong><p>{order.requested_time} Eastern</p><small>{order.fulfillment}</small>{order.delivery_address && <p>{order.delivery_address}</p>}</td>
     <td className="admin-order-items"><strong>{order.order_items.length} item types</strong>
       <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>
-        {order.order_items.map((item, index) => <tr key={index}><td>{item.product_name_snapshot}</td><td>{item.quantity}</td><td>{money(item.unit_price_cents)}</td><td>{money(item.line_total_cents)}</td></tr>)}
+        {order.order_items.map((item, index) => <tr key={index}><td>{item.product_name_snapshot}{item.unit_label_snapshot && <> ({item.unit_label_snapshot})</>}</td><td>{item.quantity}</td><td>{money(item.unit_price_cents)}</td><td>{money(item.line_total_cents)}</td></tr>)}
       </tbody></table>
       {order.customer_notes && <p><strong>Customer notes:</strong> {order.customer_notes}</p>}
     </td>
