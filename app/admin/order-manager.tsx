@@ -86,17 +86,39 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
 
 export default function OrderManager({ orders, busy, save }: { orders: AdminOrder[]; busy: boolean; save: Save }) {
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [dateMode, setDateMode] = useState<'all'|'today'|'tomorrow'|'next2'|'custom'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
+  const [refreshError, setRefreshError] = useState('');
+  const todayEastern = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const addDays = (iso: string, days: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true); setRefreshError('');
+    try {
+      const response = await fetch('/api/admin/orders?offset=0', { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
+      setFreshOrders(json.orders);
+      setOlderOrders([]);
+      setNextOffset(json.nextOffset);
+    } catch (e) { setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
+    finally { setRefreshing(false); }
+  };
   const [olderOrders, setOlderOrders] = useState<AdminOrder[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(orders.length === 100 ? 100 : null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState('');
   useEffect(() => {
+    setFreshOrders(null);
     setOlderOrders([]);
     setNextOffset(orders.length === 100 ? 100 : null);
     setOlderError('');
   }, [orders]);
-  const loadedOrders = [...orders, ...olderOrders];
+  const loadedOrders = [...(freshOrders ?? orders), ...olderOrders];
   const loadOlder = async () => {
     if (nextOffset === null || loadingOlder) return;
     setLoadingOlder(true); setOlderError('');
@@ -110,15 +132,23 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     finally { setLoadingOlder(false); }
   };
   const shown = loadedOrders.filter(o => {
-    if (filter !== 'all' && o.status !== filter) return false;
+    if (selectedStatuses.length && !selectedStatuses.includes(o.status)) return false;
+    const today = todayEastern();
+    const from = dateMode === 'today' ? today : dateMode === 'tomorrow' || dateMode === 'next2' ? addDays(today, 1) : dateMode === 'custom' ? startDate : '';
+    const to = dateMode === 'today' ? today : dateMode === 'tomorrow' ? addDays(today, 1) : dateMode === 'next2' ? addDays(today, 2) : dateMode === 'custom' ? endDate : '';
+    if (from && o.requested_date < from) return false;
+    if (to && o.requested_date > to) return false;
     const text = [o.order_number, o.customer_name, o.customer_phone, ...o.order_items.map(i => i.product_name_snapshot)].join(' ').toLowerCase();
-    return text.includes(search.toLowerCase());
+    return text.includes(search.trim().toLowerCase());
   });
   return <section className="admin-orders">
     <div className="admin-section-heading"><div><h2>Customer orders</h2><p>Review every item, confirm or reject requests, and leave customer-visible updates.</p></div><strong>{loadedOrders.filter(o => o.status === 'pending').length} pending in loaded orders</strong></div>
     <div className="admin-table-tools">
       <label>Search orders<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Order number, customer, product or phone" /></label>
-      <label>Filter by status<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">All statuses</option>{statuses.map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select></label>
+      <fieldset><legend>Statuses (select multiple)</legend><label><input type="checkbox" checked={selectedStatuses.length === 0} onChange={() => setSelectedStatuses([])} /> All statuses</label>{statuses.map(([code, label]) => <label key={code}><input type="checkbox" checked={selectedStatuses.includes(code)} onChange={e => setSelectedStatuses(old => e.target.checked ? [...old, code] : old.filter(s => s !== code))} /> {label}</label>)}</fieldset>
+      <label>Scheduled date<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
+      {dateMode === 'custom' && <><label>From<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>To<input type="date" min={startDate || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} /></label></>}
+      <button type="button" className="secondary" disabled={refreshing || busy} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
       <span>{shown.length} of {loadedOrders.length} loaded orders</span>
     </div>
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
@@ -127,6 +157,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
       {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} />)}
       {!shown.length && <tr><td colSpan={7}>No matching orders in the loaded list.</td></tr>}
     </tbody></table></div>
+    {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
     {olderError && <p role="alert" className="admin-error">{olderError}</p>}
     {nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
   </section>;
