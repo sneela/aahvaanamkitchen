@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CatalogManager, CategoryManager } from './catalog-manager';
 import PushSettings from './push-settings';
+import BulkOrderCreator from './bulk-order-creator';
 import OrderManager, { type AdminOrder } from './order-manager';
 import AnnouncementManager, { type Announcement } from './announcement-manager';
 import AnalyticsDashboard from './analytics-dashboard';
 import { isoToLocalDateTimeInput, localDateTimeInputToIso } from '@/lib/datetime-local';
 type RecordItem = {id:string;[key:string]:any};
 type Data = {orders:AdminOrder[];products:RecordItem[];categories:{id:string;name:string;is_active:boolean;sort_order:number}[];settings:Record<string,any>;specials:RecordItem[];reviews:RecordItem[];catering:RecordItem[];announcements:Announcement[]};
-const tabs=['Orders','Menu','Categories','Announcements','Analytics','Settings','Specials','Reviews','Catering'] as const;
+const tabs=['Orders','Bulk Orders','Menu','Categories','Announcements','Analytics','Settings','Specials','Reviews','Catering'] as const;
 const money=(c:number)=>'$'+(c/100).toFixed(2);
 async function request(method:string,body?:unknown){const r=await fetch('/api/admin',{method,headers:{'Content-Type':'application/json'},cache:'no-store',...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j;}
 function SpecialEditor({s,save,remove,busy}:{s:RecordItem;save:(v:Record<string,unknown>)=>Promise<void>;remove?:()=>Promise<void>;busy:boolean}){
@@ -33,6 +34,7 @@ export default function AdminDashboard(){
  const catalogSave=(method:'POST'|'PATCH'|'DELETE',b:Record<string,unknown>)=>mutate(method,b);
  return <main className="admin-shell"><header className="admin-topbar"><div style={{display:'flex',alignItems:'center',gap:15}}><img src="/images/aahvaanam-correct-wordmark.webp" alt="Aahvaanam"/><div><h1>Kitchen dashboard</h1><small>Manual orders · No online payments</small></div></div><div><a href="/" style={{marginRight:20}}>View website</a><button className="secondary" onClick={()=>void logout()}>Sign out</button></div></header><div className="admin-body"><p className="quiet">Customer orders remain pending until you accept them. Verify availability, service area and payment manually.</p>{error&&<p role="alert" className="admin-error">{error}</p>}{success&&<p role="status" className="admin-success">{success}</p>}{!data?<p>Loading dashboard…</p>:<><div className="admin-tabs">{tabs.map(t=><button key={t} className={tab===t?'active':''} onClick={()=>{setTab(t);setSuccess('')}}>{t} ({t==='Orders'?data.orders.length:t==='Menu'?data.products.length:t==='Categories'?data.categories.length:t==='Specials'?data.specials.length:t==='Reviews'?data.reviews.length:t==='Catering'?data.catering.length:t==='Announcements'?data.announcements.length:''})</button>)}</div>
  {tab==='Orders'&&<><PushSettings /><OrderManager orders={data.orders} busy={busy} save={(method,body)=>mutate(method,body)}/></>}
+ {tab==='Bulk Orders'&&<BulkOrderCreator onCreated={load}/>}
  {tab==='Menu'&&<CatalogManager products={data.products} categories={data.categories} busy={busy} save={catalogSave}/>}
  {tab==='Categories'&&<CategoryManager categories={data.categories} products={data.products} busy={busy} save={catalogSave}/>}
  {tab==='Announcements'&&<AnnouncementManager announcements={data.announcements} busy={busy} save={mutate}/>}
