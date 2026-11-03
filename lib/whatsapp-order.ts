@@ -15,6 +15,7 @@ export type OrderForWhatsApp = {
   discount_cents?: number;
   order_items: Array<{
     product_name_snapshot: string;
+    unit_label_snapshot?: string;
     quantity: number;
     line_total_cents: number;
   }>;
@@ -65,7 +66,7 @@ export function whatsappOrderMessage(order: OrderForWhatsApp): string {
   };
   const name = order.customer_name.trim().split(/\s+/)[0] || 'there';
   const items = order.order_items.map(item =>
-    '- ' + item.quantity + ' x ' + item.product_name_snapshot + ' — ' + price(item.line_total_cents),
+    '- ' + item.quantity + ' x ' + item.product_name_snapshot + (item.unit_label_snapshot ? ' (' + item.unit_label_snapshot + ')' : '') + ' — ' + price(item.line_total_cents),
   );
   const note = order.status_comment?.trim();
   const redundantNote = order.status === 'ready_for_pickup' && /ready for pickup/i.test(note || '');
