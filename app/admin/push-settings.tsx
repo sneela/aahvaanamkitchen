@@ -13,7 +13,7 @@ export default function PushSettings() {
     fetch('/api/admin/push', { cache: 'no-store' }).then(r => r.json()).then(d => {
       setConfigured(Boolean(d.configured)); setKey(d.publicKey || '');
     }).catch(() => setMessage('Unable to load push settings.'));
-    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/order-push-sw.js').then(async reg => {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration('/').then(async reg => {
       if (reg) setEnabled(Boolean(await reg.pushManager.getSubscription()));
     });
   }, []);
@@ -33,7 +33,7 @@ export default function PushSettings() {
   }
   async function disable() {
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/order-push-sw.js');
+      const registration = await navigator.serviceWorker.getRegistration('/');
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
         const response = await fetch('/api/admin/push', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: subscription.endpoint }) });
