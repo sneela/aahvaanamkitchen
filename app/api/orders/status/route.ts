@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
         })),
         subtotalCents: order.subtotal_cents,
         deliveryFeeCents: order.delivery_fee_cents,
+        discountCents: order.discount_cents || 0,
+        discountReason: order.discount_reason || '',
         totalCents: order.total_cents,
       },
     }, { headers: { 'Cache-Control': 'no-store' } });
