@@ -9,7 +9,7 @@ export type AdminOrder = {
   fulfillment: 'pickup' | 'delivery'; requested_date: string; requested_time: string;
   delivery_address?: string | null; customer_notes?: string; created_at?: string;
   status: string; status_comment?: string; status_updated_at?: string;
-  payment_status: string; subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
+  payment_status: string; discount_type?: 'none' | 'fixed' | 'percent'; discount_value?: number; discount_cents?: number; discount_reason?: string; subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
   order_items: { product_name_snapshot: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
 };
 type Save = (method: 'PATCH', payload: Record<string, unknown>) => Promise<boolean>;
@@ -25,11 +25,15 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
   const [status, setStatus] = useState(order.status);
   const [payment, setPayment] = useState(order.payment_status);
   const [comment, setComment] = useState(order.status_comment || '');
+  const [discountType, setDiscountType] = useState(order.discount_type || 'none');
+  const [discountValue, setDiscountValue] = useState(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0));
+  const [discountReason, setDiscountReason] = useState(order.discount_reason || '');
   const [localError, setLocalError] = useState('');
   useEffect(() => {
     setStatus(order.status); setPayment(order.payment_status); setComment(order.status_comment || '');
+    setDiscountType(order.discount_type || 'none'); setDiscountValue(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0)); setDiscountReason(order.discount_reason || '');
     setLocalError('');
-  }, [order.id, order.status, order.payment_status, order.status_comment]);
+  }, [order.id, order.status, order.payment_status, order.status_comment, order.discount_type, order.discount_value, order.discount_reason]);
   const update = async (nextStatus: string) => {
     setLocalError('');
     let note = comment.trim();
@@ -42,7 +46,10 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
       return;
     }
     if (nextStatus === 'rejected' && !window.confirm('Reject order #' + order.order_number + '? The customer will see your comment.')) return;
+    const numericDiscount = Number(discountValue);
+    if (!Number.isFinite(numericDiscount) || numericDiscount < 0 || (discountType === 'percent' && numericDiscount > 100) || (discountType === 'fixed' && Math.round(numericDiscount * 100) > order.subtotal_cents)) { setLocalError('Invalid discount amount'); return; }
     await save('PATCH', {
+      discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
       resource: 'order', id: order.id, status: nextStatus,
       status_comment: note, payment_status: payment,
     });
@@ -60,7 +67,7 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
       </tbody></table>
       {order.customer_notes && <p><strong>Customer notes:</strong> {order.customer_notes}</p>}
     </td>
-    <td className="admin-order-pricing"><small>Subtotal {money(order.subtotal_cents)}</small><small>Delivery {money(order.delivery_fee_cents)}</small><strong>{money(order.total_cents)}</strong></td>
+    <td className="admin-order-pricing"><small>Subtotal {money(order.subtotal_cents)}</small><small>Delivery {money(order.delivery_fee_cents)}</small>{Boolean(order.discount_cents) && <small>Discount −{money(order.discount_cents || 0)}</small>}<strong>{money(order.total_cents)}</strong></td>
     <td><span className={'order-status order-status-' + order.status}>{statuses.find(([code]) => code === order.status)?.[1] || order.status}</span></td>
     <td>
       <form className="admin-order-controls" onSubmit={submit}>
@@ -70,6 +77,8 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
         <label>Payment<select value={payment} disabled={busy} onChange={e => setPayment(e.target.value)}>
           {payments.map(p => <option key={p} value={p}>{p}</option>)}
         </select></label>
+        <label>Discount type<select disabled={busy} value={discountType} onChange={e => { setDiscountType(e.target.value as 'none' | 'fixed' | 'percent'); setDiscountValue('0'); }}><option value="none">No discount</option><option value="fixed">Fixed amount ($)</option><option value="percent">Percentage (%)</option></select></label>
+        {discountType !== 'none' && <><label>Discount amount<input type="number" min="0" step="0.01" max={discountType === 'percent' ? 100 : order.subtotal_cents / 100} value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={busy} /></label><label>Discount reason<input maxLength={250} value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={busy} /></label></>}
         <label>Message to customer<textarea maxLength={1000} disabled={busy} placeholder="Reason for rejection, pickup details, or another update" value={comment} onChange={e => setComment(e.target.value)} /></label>
         <small>Customers can see this message in Track Order after you save.</small>
         {localError && <p role="alert" className="admin-inline-error">{localError}</p>}
