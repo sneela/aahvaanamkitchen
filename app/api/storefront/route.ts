@@ -22,7 +22,7 @@ export async function GET() {
       db.collection('announcements').find({ is_published: true }).sort({ sort_order: 1, created_at: -1 }).limit(20).toArray(),
       db.collection<OrderDoc>('orders')
         .find({ created_at: { $gte: new Date(Date.now() - 24*60*60*1000) }, status: { $nin: ['rejected','cancelled'] } })
-        .project<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string }> }>({ order_items: 1, _id: 0 }).toArray(),
+        .project<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string; quantity: number }> }>({ order_items: 1, _id: 0 }).toArray(),
     ]);
     const settings = { ...defaultSettings, ...s };
     const names = new Map(categories.map(c => [c.id, c.name]));
