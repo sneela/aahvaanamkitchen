@@ -10,8 +10,9 @@ export type AdminOrder = {
   delivery_address?: string | null; customer_notes?: string; created_at?: string;
   status: string; status_comment?: string; status_updated_at?: string;
   payment_status: string; discount_type?: 'none' | 'fixed' | 'percent'; discount_value?: number; discount_cents?: number; discount_reason?: string; subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
-  order_items: { product_name_snapshot: string; unit_label_snapshot?: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
+  order_items: { product_slug_snapshot?: string; product_name_snapshot: string; unit_label_snapshot?: string; quantity: number; unit_price_cents: number; line_total_cents: number }[];
 };
+type MenuProduct = { slug: string; name: string; unit_label: string; price_cents: number; is_available: boolean };
 type Save = (method: 'PATCH', payload: Record<string, unknown>) => Promise<boolean>;
 const money = (cents: number) => '$' + (cents / 100).toFixed(2);
 const statuses = [
@@ -21,7 +22,7 @@ const statuses = [
 ] as const;
 const payments = ['unpaid','paid','refunded'] as const;
 
-function OrderRow({ order, busy, save, refresh }: { order: AdminOrder; busy: boolean; save: Save; refresh: () => Promise<void> }) {
+function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder; busy: boolean; save: Save; refresh: () => Promise<void>; products: MenuProduct[] }) {
   const [status, setStatus] = useState(order.status);
   const [payment, setPayment] = useState(order.payment_status);
   const [comment, setComment] = useState(order.status_comment || '');
@@ -31,11 +32,11 @@ function OrderRow({ order, busy, save, refresh }: { order: AdminOrder; busy: boo
   const [localError, setLocalError] = useState('');
   const [editing, setEditing] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
-  const [draftItems, setDraftItems] = useState(order.order_items.map(i => ({name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
+  const [draftItems, setDraftItems] = useState(order.order_items.map(i => ({slug:i.product_slug_snapshot||'',name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
   const resetItems = () => setDraftItems(order.order_items.map(i => ({name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
   const saveItems = async () => {
     setLocalError('');
-    const items = draftItems.map(i=>({name:i.name,unit:i.unit,quantity:Number(i.quantity),unit_price_cents:/^\\d+(\\.\\d{1,2})?$/.test(i.price.trim())?Math.round(Number(i.price)*100):null}));
+    const items = draftItems.map(i=>({slug:i.slug,name:i.name,unit:i.unit,quantity:Number(i.quantity),unit_price_cents:/^\d+(\.\d{1,2})?$/.test(i.price.trim())?Math.round(Number(i.price)*100):null}));
     if (!items.length || items.some(i=>!i.name.trim() || !Number.isSafeInteger(i.quantity) || i.quantity<1 || i.unit_price_cents===null)) {setLocalError('Every item needs a name, quantity and valid price.');return;}
     setEditBusy(true);
     try {const response=await fetch('/api/admin/order-items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:order.id,items})});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to edit items');setEditing(false);await refresh();}
@@ -78,7 +79,7 @@ function OrderRow({ order, busy, save, refresh }: { order: AdminOrder; busy: boo
         {order.order_items.map((item, index) => <tr key={index}><td>{item.product_name_snapshot}{item.unit_label_snapshot && <> ({item.unit_label_snapshot})</>}</td><td>{item.quantity}</td><td>{money(item.unit_price_cents)}</td><td>{money(item.line_total_cents)}</td></tr>)}
       </tbody></table>
       <button type="button" className="secondary" disabled={busy||editBusy} onClick={()=>{if(!editing)resetItems();setEditing(!editing)}}>{editing?'Close item editor':'Edit / add items'}</button>
-      {editing && <div style={{minWidth:280,display:'grid',gap:8,marginTop:10}}>{draftItems.map((item,index)=><div key={index} style={{display:'grid',gap:4,padding:8,border:'1px solid #ddd',borderRadius:6}}><input aria-label="Item name" placeholder="Item name" value={item.name} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,name:e.target.value}:i))}/><input aria-label="Size or pieces" placeholder="Half tray / 20 pieces" value={item.unit} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,unit:e.target.value}:i))}/><input aria-label="Quantity" type="number" min="1" placeholder="Quantity" value={item.quantity} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,quantity:e.target.value}:i))}/><input aria-label="Unit price dollars" inputMode="decimal" placeholder="Price ($)" value={item.price} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,price:e.target.value}:i))}/><button type="button" disabled={draftItems.length===1} onClick={()=>setDraftItems(old=>old.filter((_,j)=>j!==index))}>Remove</button></div>)}<button type="button" onClick={()=>setDraftItems(old=>[...old,{name:'',unit:'',quantity:'',price:''}])}>+ Add item</button><button type="button" className="primary" disabled={editBusy} onClick={()=>void saveItems()}>{editBusy?'Saving…':'Save updated items'}</button></div>}
+      {editing && <div style={{minWidth:280,display:'grid',gap:8,marginTop:10}}>{draftItems.map((item,index)=><div key={index} style={{display:'grid',gap:4,padding:8,border:'1px solid #ddd',borderRadius:6}}><select aria-label="Menu item" value={item.slug || (products.find(p=>p.name===item.name)?.slug||"")} onChange={e=>{const p=products.find(p=>p.slug===e.target.value);if(p)setDraftItems(old=>old.map((i,j)=>j===index?{...i,slug:p.slug,name:p.name,unit:p.unit_label,price:(p.price_cents/100).toFixed(2)}:i));}}><option value="">Select menu item</option>{!item.slug && item.name && !products.some(p=>p.name===item.name) && <option value="" disabled>{item.name} (previously ordered)</option>}{products.map(p=><option key={p.slug} value={p.slug}>{p.name} ({p.unit_label})</option>)}</select><input aria-label="Size or pieces" placeholder="Half tray / 20 pieces" value={item.unit} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,unit:e.target.value}:i))}/><input aria-label="Quantity" type="number" min="1" placeholder="Quantity" value={item.quantity} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,quantity:e.target.value}:i))}/><input aria-label="Unit price dollars" inputMode="decimal" placeholder="Price ($)" value={item.price} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,price:e.target.value}:i))}/><button type="button" disabled={draftItems.length===1} onClick={()=>setDraftItems(old=>old.filter((_,j)=>j!==index))}>Remove</button></div>)}<button type="button" onClick={()=>setDraftItems(old=>[...old,{slug:'',name:'',unit:'',quantity:'',price:''}])}>+ Add item</button><button type="button" className="primary" disabled={editBusy} onClick={()=>void saveItems()}>{editBusy?'Saving…':'Save updated items'}</button></div>}
       {order.customer_notes && <p><strong>Customer notes:</strong> {order.customer_notes}</p>}
     </td>
     <td className="admin-order-pricing"><small>Subtotal {money(order.subtotal_cents)}</small><small>Delivery {money(order.delivery_fee_cents)}</small>{Boolean(order.discount_cents) && <small>Discount −{money(order.discount_cents || 0)}</small>}<strong>{money(order.total_cents)}</strong></td>
@@ -107,7 +108,7 @@ function OrderRow({ order, busy, save, refresh }: { order: AdminOrder; busy: boo
   </tr>;
 }
 
-export default function OrderManager({ orders, busy, save }: { orders: AdminOrder[]; busy: boolean; save: Save }) {
+export default function OrderManager({ orders, busy, save, products }: { orders: AdminOrder[]; busy: boolean; save: Save; products: MenuProduct[] }) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
@@ -179,7 +180,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
     </tr></thead><tbody>
-      {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} refresh={refresh} />)}
+      {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} refresh={refresh} products={products} />)}
       {!shown.length && <tr><td colSpan={7}>No matching orders found.</td></tr>}
     </tbody></table></div>
     {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
