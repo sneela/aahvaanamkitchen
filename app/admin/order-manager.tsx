@@ -114,7 +114,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   </tr>;
 }
 
-export default function OrderManager({ orders, busy, save, products }: { orders: AdminOrder[]; busy: boolean; save: Save; products: MenuProduct[] }) {
+export default function OrderManager({ orders, busy, save, products, refresh: refreshDashboard }: { orders: AdminOrder[]; busy: boolean; save: Save; products: MenuProduct[]; refresh: () => Promise<void> }) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
