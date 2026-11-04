@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest) {
       if (!name || name.length > 120 || unit.length > 100 || !Number.isSafeInteger(i.quantity) || (i.quantity as number) < 1 || (i.quantity as number) > 100000 || !Number.isSafeInteger(i.unit_price_cents) || (i.unit_price_cents as number) < 0 || (i.unit_price_cents as number) > 100000000) return NextResponse.json({error:'Invalid item name, quantity or price'}, {status:422});
       const line = (i.quantity as number) * (i.unit_price_cents as number);
       if (!Number.isSafeInteger(line) || line > 100000000) return NextResponse.json({error:'Line total too large'}, {status:422});
-      items.push({product_name_snapshot:name,unit_label_snapshot:unit||undefined,quantity:i.quantity as number,unit_price_cents:i.unit_price_cents as number,line_total_cents:line});
+      items.push({product_slug_snapshot:typeof i.slug==='string' && /^[a-z0-9-]{1,100}$/.test(i.slug) ? i.slug : undefined,product_name_snapshot:name,unit_label_snapshot:unit||undefined,quantity:i.quantity as number,unit_price_cents:i.unit_price_cents as number,line_total_cents:line});
     }
     const subtotal = items.reduce((sum,i)=>sum+i.line_total_cents,0);
     if (!Number.isSafeInteger(subtotal) || subtotal > 100000000) return NextResponse.json({error:'Subtotal too large'}, {status:422});
