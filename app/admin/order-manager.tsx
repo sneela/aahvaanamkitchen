@@ -21,7 +21,7 @@ const statuses = [
 ] as const;
 const payments = ['unpaid','paid','refunded'] as const;
 
-function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; save: Save }) {
+function OrderRow({ order, busy, save, refresh }: { order: AdminOrder; busy: boolean; save: Save; refresh: () => Promise<void> }) {
   const [status, setStatus] = useState(order.status);
   const [payment, setPayment] = useState(order.payment_status);
   const [comment, setComment] = useState(order.status_comment || '');
@@ -29,6 +29,18 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
   const [discountValue, setDiscountValue] = useState(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0));
   const [discountReason, setDiscountReason] = useState(order.discount_reason || '');
   const [localError, setLocalError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const [draftItems, setDraftItems] = useState(order.order_items.map(i => ({name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
+  const resetItems = () => setDraftItems(order.order_items.map(i => ({name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
+  const saveItems = async () => {
+    setLocalError('');
+    const items = draftItems.map(i=>({name:i.name,unit:i.unit,quantity:Number(i.quantity),unit_price_cents:/^\\d+(\\.\\d{1,2})?$/.test(i.price.trim())?Math.round(Number(i.price)*100):null}));
+    if (!items.length || items.some(i=>!i.name.trim() || !Number.isSafeInteger(i.quantity) || i.quantity<1 || i.unit_price_cents===null)) {setLocalError('Every item needs a name, quantity and valid price.');return;}
+    setEditBusy(true);
+    try {const response=await fetch('/api/admin/order-items',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:order.id,items})});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to edit items');setEditing(false);await refresh();}
+    catch(e){setLocalError(e instanceof Error?e.message:'Unable to edit items');}finally{setEditBusy(false);}
+  };
   useEffect(() => {
     setStatus(order.status); setPayment(order.payment_status); setComment(order.status_comment || '');
     setDiscountType(order.discount_type || 'none'); setDiscountValue(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0)); setDiscountReason(order.discount_reason || '');
@@ -65,6 +77,8 @@ function OrderRow({ order, busy, save }: { order: AdminOrder; busy: boolean; sav
       <table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>
         {order.order_items.map((item, index) => <tr key={index}><td>{item.product_name_snapshot}{item.unit_label_snapshot && <> ({item.unit_label_snapshot})</>}</td><td>{item.quantity}</td><td>{money(item.unit_price_cents)}</td><td>{money(item.line_total_cents)}</td></tr>)}
       </tbody></table>
+      <button type="button" className="secondary" disabled={busy||editBusy} onClick={()=>{if(!editing)resetItems();setEditing(!editing)}}>{editing?'Close item editor':'Edit / add items'}</button>
+      {editing && <div style={{minWidth:280,display:'grid',gap:8,marginTop:10}}>{draftItems.map((item,index)=><div key={index} style={{display:'grid',gap:4,padding:8,border:'1px solid #ddd',borderRadius:6}}><input aria-label="Item name" placeholder="Item name" value={item.name} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,name:e.target.value}:i))}/><input aria-label="Size or pieces" placeholder="Half tray / 20 pieces" value={item.unit} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,unit:e.target.value}:i))}/><input aria-label="Quantity" type="number" min="1" placeholder="Quantity" value={item.quantity} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,quantity:e.target.value}:i))}/><input aria-label="Unit price dollars" inputMode="decimal" placeholder="Price ($)" value={item.price} onChange={e=>setDraftItems(old=>old.map((i,j)=>j===index?{...i,price:e.target.value}:i))}/><button type="button" disabled={draftItems.length===1} onClick={()=>setDraftItems(old=>old.filter((_,j)=>j!==index))}>Remove</button></div>)}<button type="button" onClick={()=>setDraftItems(old=>[...old,{name:'',unit:'',quantity:'',price:''}])}>+ Add item</button><button type="button" className="primary" disabled={editBusy} onClick={()=>void saveItems()}>{editBusy?'Saving…':'Save updated items'}</button></div>}
       {order.customer_notes && <p><strong>Customer notes:</strong> {order.customer_notes}</p>}
     </td>
     <td className="admin-order-pricing"><small>Subtotal {money(order.subtotal_cents)}</small><small>Delivery {money(order.delivery_fee_cents)}</small>{Boolean(order.discount_cents) && <small>Discount −{money(order.discount_cents || 0)}</small>}<strong>{money(order.total_cents)}</strong></td>
@@ -156,7 +170,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     <div className="admin-section-heading"><div><h2>Customer orders</h2><p>Review every item, confirm or reject requests, and leave customer-visible updates.</p></div><strong>{loadedOrders.filter(o => o.status === 'pending').length} pending in loaded orders</strong></div>
     <div className="admin-table-tools">
       <label>Search orders<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Order number, customer, product or phone" /></label>
-      <fieldset><legend>Statuses (select multiple)</legend><label><input type="checkbox" checked={selectedStatuses.length === 0} onChange={() => setSelectedStatuses([])} /> All statuses</label>{statuses.map(([code, label]) => <label key={code}><input type="checkbox" checked={selectedStatuses.includes(code)} onChange={e => setSelectedStatuses(old => e.target.checked ? [...old, code] : old.filter(s => s !== code))} /> {label}</label>)}</fieldset>
+      <details style={{position:'relative',minWidth:190}}><summary style={{cursor:'pointer',padding:10,border:'1px solid #ccc',borderRadius:6}}>Statuses: {selectedStatuses.length ? selectedStatuses.length+' selected' : 'All'}</summary><div style={{display:'grid',gap:6,padding:12,background:'var(--background, white)',border:'1px solid #ddd',borderRadius:6,maxHeight:240,overflowY:'auto'}}><label><input type="checkbox" checked={selectedStatuses.length===0} onChange={()=>setSelectedStatuses([])}/> All statuses</label>{statuses.map(([code,label])=><label key={code}><input type="checkbox" checked={selectedStatuses.includes(code)} onChange={e=>setSelectedStatuses(old=>e.target.checked?[...old,code]:old.filter(v=>v!==code))}/> {label}</label>)}</div></details>
       <label>Scheduled date<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
       {dateMode === 'custom' && <><label>From<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>To<input type="date" min={startDate || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} /></label></>}
       <button type="button" className="secondary" disabled={refreshing || busy} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
@@ -165,7 +179,7 @@ export default function OrderManager({ orders, busy, save }: { orders: AdminOrde
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
     </tr></thead><tbody>
-      {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} />)}
+      {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} refresh={refresh} />)}
       {!shown.length && <tr><td colSpan={7}>No matching orders found.</td></tr>}
     </tbody></table></div>
     {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
