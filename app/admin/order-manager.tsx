@@ -33,7 +33,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   const [editing, setEditing] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
   const [draftItems, setDraftItems] = useState(order.order_items.map(i => ({slug:i.product_slug_snapshot||'',name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
-  const resetItems = () => setDraftItems(order.order_items.map(i => ({name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
+  const resetItems = () => setDraftItems(order.order_items.map(i => ({slug:i.product_slug_snapshot||'',name:i.product_name_snapshot,unit:i.unit_label_snapshot||'',quantity:String(i.quantity),price:(i.unit_price_cents/100).toFixed(2)})));
   const saveItems = async () => {
     setLocalError('');
     const items = draftItems.map(i=>({slug:i.slug,name:i.name,unit:i.unit,quantity:Number(i.quantity),unit_price_cents:/^\d+(\.\d{1,2})?$/.test(i.price.trim())?Math.round(Number(i.price)*100):null}));
