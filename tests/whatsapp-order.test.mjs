@@ -47,7 +47,7 @@ test('pending message never claims the kitchen has accepted the order', () => {
   assert.match(text, /2 x Jowar Roti/);
   assert.match(text, /1 x Chicken Curry/);
   assert.match(text, /\$35\.00/);
-  assert.match(text, /2026-11-01 at 17:30 ET/);
+  assert.match(text, /2026-11-01 at 5:30 PM EST/);
 });
 
 test('confirmation, rejection, delivery and kitchen comments are reflected in drafts', () => {

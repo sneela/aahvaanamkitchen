@@ -19,7 +19,9 @@ export interface OrderDoc {
   customer_notes: string; status: string; payment_status: string;
   status_comment?: string; status_updated_at?: Date;
   subtotal_cents: number; delivery_fee_cents: number; total_cents: number;
-  order_items: Array<{product_slug_snapshot?:string;product_name_snapshot:string;quantity:number;unit_price_cents:number;line_total_cents:number}>;
+  discount_type?: 'none' | 'fixed' | 'percent'; discount_value?: number;
+  discount_cents?: number; discount_reason?: string;
+  order_items: Array<{product_slug_snapshot?:string;product_name_snapshot:string;unit_label_snapshot?:string;quantity:number;unit_price_cents:number;line_total_cents:number}>;
   created_at: Date; updated_at: Date;
 }
 export const serialize = <T extends { _id?: ObjectId }>(doc: T) => {

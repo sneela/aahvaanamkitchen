@@ -22,7 +22,7 @@ export async function GET() {
       db.collection('announcements').find({ is_published: true }).sort({ sort_order: 1, created_at: -1 }).limit(20).toArray(),
       db.collection<OrderDoc>('orders')
         .find({ created_at: { $gte: new Date(Date.now() - 24*60*60*1000) }, status: { $nin: ['rejected','cancelled'] } })
-        .project<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string }> }>({ order_items: 1, _id: 0 }).toArray(),
+        .project<{ order_items: Array<{ product_slug_snapshot?: string; product_name_snapshot: string; quantity: number }> }>({ order_items: 1, _id: 0 }).toArray(),
     ]);
     const settings = { ...defaultSettings, ...s };
     const names = new Map(categories.map(c => [c.id, c.name]));
@@ -47,22 +47,21 @@ export async function GET() {
           id: String(s._id), title: String(s.title || ''), message: String(s.description || ''),
           kind: 'special', actionLabel: 'See specials', actionHref: '#specials',
         }));
-    // Actual placed orders only: each order contributes once for each product type.
-    // Older orders lack a stored slug, so match their original item names only.
+    // Count quantities ordered, not checkout transactions. Three plates in one
+    // checkout contribute three to the item's displayed 24-hour order count.
+    // Older records without a product slug use their saved item name.
     const recentBySlug = new Map<string, number>();
     const recentByName = new Map<string, number>();
     for (const order of recentOrders) {
-      const seen = new Set<string>();
       for (const item of order.order_items || []) {
-        const key = item.product_slug_snapshot
-          ? 'slug:' + item.product_slug_snapshot : 'name:' + item.product_name_snapshot;
-        if (!seen.has(key)) {
-          seen.add(key);
-          if (item.product_slug_snapshot) {
-            recentBySlug.set(item.product_slug_snapshot, (recentBySlug.get(item.product_slug_snapshot) || 0) + 1);
-          } else {
-            recentByName.set(item.product_name_snapshot, (recentByName.get(item.product_name_snapshot) || 0) + 1);
-          }
+        const quantity = Number(item.quantity);
+        if (!Number.isSafeInteger(quantity) || quantity <= 0) continue;
+        if (item.product_slug_snapshot) {
+          recentBySlug.set(item.product_slug_snapshot,
+            (recentBySlug.get(item.product_slug_snapshot) || 0) + quantity);
+        } else {
+          recentByName.set(item.product_name_snapshot,
+            (recentByName.get(item.product_name_snapshot) || 0) + quantity);
         }
       }
     }

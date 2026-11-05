@@ -11,9 +11,11 @@ type OrderLookup = {
   fulfillment: string;
   date: string;
   time: string;
-  items: { name: string; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
+  items: { name: string; unitLabel?: string; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
   subtotalCents: number;
   deliveryFeeCents: number;
+  discountCents?: number;
+  discountReason?: string;
   totalCents: number;
 };
 
@@ -73,9 +75,10 @@ export default function OrderTracker({ initialOrderNumber }: { initialOrderNumbe
       <p>{descriptions[found.status] || 'See the latest status from the kitchen.'}</p>
       {found.comment && <div className="track-comment"><strong>Message from Aahvaanam Kitchen</strong><p>{found.comment}</p></div>}
       <p><strong>Requested:</strong> {found.date} at {found.time} Eastern · {found.fulfillment}</p>
-      <div className="track-items"><h4>Items</h4>{found.items.map((i, index) => <div className="track-item" key={index}><span>{i.quantity} × {i.name} <small>({money(i.unitPriceCents)} each)</small></span><strong>{money(i.lineTotalCents)}</strong></div>)}</div>
+      <div className="track-items"><h4>Items</h4>{found.items.map((i, index) => <div className="track-item" key={index}><span>{i.quantity} × {i.name}{i.unitLabel && <> ({i.unitLabel})</>} <small>({money(i.unitPriceCents)} each)</small></span><strong>{money(i.lineTotalCents)}</strong></div>)}</div>
       <div className="track-item"><span>Subtotal</span><strong>{money(found.subtotalCents)}</strong></div>
       <div className="track-item"><span>Delivery</span><strong>{money(found.deliveryFeeCents)}</strong></div>
+      {Boolean(found.discountCents) && <div className="track-item"><span>Discount{found.discountReason ? ' (' + found.discountReason + ')' : ''}</span><strong>−{money(found.discountCents || 0)}</strong></div>}
       <div className="track-item track-total"><span>Total</span><strong>{money(found.totalCents)}</strong></div>
       <p className="quiet">Payment: {found.paymentStatus}. No online payment is collected. Any order changes are confirmed manually.</p>
     </section>}

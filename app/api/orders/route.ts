@@ -4,6 +4,7 @@ import { defaultSettings, type OrderDoc, type ProductDoc, type SettingsDoc } fro
 import { badRequest, isDate, isTime, isUuid, jsonError, parseBody, str, int } from '@/lib/api';
 import { easternDateTimeMs } from '@/lib/time';
 import { rateLimit } from '@/lib/mongodb/limits';
+import { notifyAdminDevices } from '@/lib/notifications/web-push';
 import { notifyOwnerNewOrder } from '@/lib/notifications/order-alerts';
 export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
@@ -38,10 +39,9 @@ export async function POST(request: NextRequest) {
     const bySlug = new Map(products.map(p => [p.slug, p]));
     const requestedMs = easternDateTimeMs(date, time);
     if (requestedMs === null) return badRequest('Invalid local date or time', 422);
-    const noticeHours = Math.max(settings.minimum_notice_hours, ...products.map(p => p.requires_preorder ? Math.max(p.preorder_notice_hours, settings.default_preorder_notice_hours) : 0));
-    if (requestedMs - Date.now() < noticeHours * 3600000) return badRequest('Please choose a later date/time to meet advance notice requirements', 422);
-    if (requestedMs - Date.now() > settings.max_advance_days * 86400000) return badRequest('Requested date is too far ahead', 422);
-    const items = requested.map(i => { const p = bySlug.get(i.slug)!; return { product_slug_snapshot: p.slug, product_name_snapshot: p.name, quantity: i.quantity, unit_price_cents: p.price_cents, line_total_cents: p.price_cents * i.quantity }; });
+    // Kitchen reviews availability manually; reject only past requested times.
+    if (requestedMs <= Date.now()) return badRequest('Please choose a future date and time', 422);
+    const items = requested.map(i => { const p = bySlug.get(i.slug)!; return { product_slug_snapshot: p.slug, product_name_snapshot: p.name, unit_label_snapshot: p.unit_label, quantity: i.quantity, unit_price_cents: p.price_cents, line_total_cents: p.price_cents * i.quantity }; });
     const subtotal = items.reduce((sum, i) => sum + i.line_total_cents, 0);
     if (b.fulfillment === 'delivery' && subtotal < settings.delivery_minimum_cents) return badRequest('Delivery minimum not met', 422);
     const fee = b.fulfillment === 'delivery' ? settings.default_delivery_fee_cents : 0;
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       }
       throw e;
     }
-    await notifyOwnerNewOrder(order);
+    await Promise.allSettled([notifyOwnerNewOrder(order), notifyAdminDevices(order.order_number)]);
     return NextResponse.json({ order: { number: order.order_number, totalCents: order.total_cents, deliveryFeeCents: fee, status: 'pending' } }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return jsonError(e, 'Unable to submit order request'); }
 }
