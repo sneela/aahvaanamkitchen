@@ -34,3 +34,13 @@ test('exclusive end datetime and filters',()=>{
  assert.equal(buildReport(rows,{statuses:['completed'],payment_statuses:['paid']}).summary.orders,1);
  assert.equal(buildReport(rows,{customer_id:'cust-1'}).customers.length,1);
 });
+
+test('cancelled orders are not automatically treated as refunds',()=>{
+ const r=buildReport([order({status:'cancelled',payment_status:'unpaid',total_cents:1200})]);
+ assert.equal(r.summary.cancelled,1);assert.equal(r.summary.refunded,0);
+});
+test('refunded payment is not outstanding customer debt',()=>{
+ const r=buildReport([order({payment_status:'refunded'})]);
+ assert.equal(r.customers[0].outstanding,0);
+ assert.equal(r.summary.refunded,21);
+});
