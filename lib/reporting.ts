@@ -52,7 +52,7 @@ export function buildReport(all:ReportOrder[],filters:{from?:string;to?:string;f
  });
  const active=orders.filter(o=>!['cancelled','rejected'].includes(normalize(o.status||'')));
  const sum=(rows:ReportOrder[],f:(o:ReportOrder)=>number)=>rows.reduce((n,o)=>n+f(o),0);
- const summary={orders:active.length,cancelled:orders.length-active.length,subtotal:dollars(sum(active,o=>cents(o.subtotal_cents))),discounts:dollars(sum(active,o=>cents(o.discount_cents))),delivery:dollars(sum(active,o=>cents(o.delivery_fee_cents))),total:dollars(sum(active,o=>cents(o.total_cents))),collected:dollars(sum(active.filter(o=>normalize(o.payment_status)==='paid'),o=>cents(o.total_cents))),unpaid:dollars(sum(active.filter(o=>normalize(o.payment_status)==='unpaid'),o=>cents(o.total_cents))),outstanding:dollars(sum(active.filter(o=>normalize(o.payment_status)==='unpaid'||!['paid','refunded'].includes(normalize(o.payment_status||''))),o=>cents(o.total_cents))),refunded:dollars(sum(orders.filter(o=>normalize(o.payment_status)==='refunded'||normalize(o.status)==='cancelled'),o=>cents(o.total_cents))),payment_unknown:dollars(sum(active.filter(o=>!['paid','unpaid','refunded'].includes(normalize(o.payment_status||''))),o=>cents(o.total_cents)))};
+ const summary={orders:active.length,cancelled:orders.length-active.length,subtotal:dollars(sum(active,o=>cents(o.subtotal_cents))),discounts:dollars(sum(active,o=>cents(o.discount_cents))),delivery:dollars(sum(active,o=>cents(o.delivery_fee_cents))),total:dollars(sum(active,o=>cents(o.total_cents))),collected:dollars(sum(active.filter(o=>normalize(o.payment_status)==='paid'),o=>cents(o.total_cents))),unpaid:dollars(sum(active.filter(o=>normalize(o.payment_status)==='unpaid'),o=>cents(o.total_cents))),outstanding:dollars(sum(active.filter(o=>normalize(o.payment_status)==='unpaid'||!['paid','refunded'].includes(normalize(o.payment_status||''))),o=>cents(o.total_cents))),refunded:dollars(sum(orders.filter(o=>normalize(o.payment_status)==='refunded'),o=>cents(o.total_cents))),payment_unknown:dollars(sum(active.filter(o=>!['paid','unpaid','refunded'].includes(normalize(o.payment_status||''))),o=>cents(o.total_cents)))};
  const items=new Map<string,{name:string;unit:string;quantity:number;orders:Set<number>;gross_cents:number;net_cents:number}>();
  const customers=new Map<string,{key:string;name:string;phone:string;orders:number;total_cents:number;paid_cents:number;outstanding_cents:number;last_order:string;first_order:string;cancelled:number;history:{order_number:number;date:string;status:string;payment_status:string;total:number;items:string}[]}>();
  const days=new Map<string,{date:string;orders:number;total_cents:number;paid_cents:number}>();
@@ -65,13 +65,13 @@ export function buildReport(all:ReportOrder[],filters:{from?:string;to?:string;f
    const name=item.product_name_snapshot||'Unknown item',unit=item.unit_label_snapshot||'';
    const key=(item.product_slug_snapshot||name.toLowerCase())+'|'+unit.toLowerCase();
    const gross=cents(item.line_total_cents);
-   const discountShare=subtotal>0?Math.round(discount*(gross/subtotal)):0;
+   const discountShare=subtotal>0?Math.round(Math.min(discount,subtotal)*(gross/subtotal)):0;
    const row=items.get(key)||{name,unit,quantity:0,orders:new Set<number>(),gross_cents:0,net_cents:0};
    row.quantity+=item.quantity||0;row.orders.add(o.order_number);row.gross_cents+=gross;row.net_cents+=Math.max(0,gross-discountShare);items.set(key,row);
   }
   const key=customerKey(o);
   const c=customers.get(key)||{key,name:o.customer_name||'Unknown',phone:o.customer_phone||'',orders:0,total_cents:0,paid_cents:0,outstanding_cents:0,last_order:'',first_order:'',cancelled:0,history:[]};
-  c.orders++;c.total_cents+=cents(o.total_cents);if(normalize(o.payment_status)==='paid')c.paid_cents+=cents(o.total_cents);if(normalize(o.payment_status)!=='paid')c.outstanding_cents+=cents(o.total_cents);
+  c.orders++;c.total_cents+=cents(o.total_cents);if(normalize(o.payment_status)==='paid')c.paid_cents+=cents(o.total_cents);if(normalize(o.payment_status)==='unpaid')c.outstanding_cents+=cents(o.total_cents);
   const stamp=new Date(o.created_at).toISOString();if(stamp>c.last_order)c.last_order=stamp;if(!c.first_order||stamp<c.first_order)c.first_order=stamp;
   c.history.push({order_number:o.order_number,date:stamp,status:o.status,payment_status:o.payment_status,total:dollars(cents(o.total_cents)),items:(o.order_items||[]).map(i=>i.quantity+' × '+i.product_name_snapshot).join(', ')});
   customers.set(key,c);
