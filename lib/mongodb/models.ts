@@ -14,7 +14,7 @@ export interface ProductDoc {
 }
 export interface OrderDoc {
   _id?: ObjectId; client_request_id: string; order_number: number;
-  customer_name: string; customer_phone: string; fulfillment: 'pickup'|'delivery';
+  customer_name: string; customer_phone: string; customer_id?: string; fulfillment: 'pickup'|'delivery';
   requested_date: string; requested_time: string; delivery_address: string | null;
   customer_notes: string; status: string; payment_status: string;
   status_comment?: string; status_updated_at?: Date;
