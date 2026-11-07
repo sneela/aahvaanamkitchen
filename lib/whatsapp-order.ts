@@ -52,6 +52,15 @@ export function whatsappLink(rawPhone: string, message?: string): string | null 
   return message?.trim() ? base + '?text=' + encodeURIComponent(message.trim()) : base;
 }
 
+/** Show piece totals only when the saved item unit explicitly specifies a piece count. */
+function pieceTotal(quantity: number, unit?: string): string {
+  const label = (unit || '').trim();
+  const pack = /(?:^|\\b)(\\d+)\\s*(?:pieces?|pcs?)(?:\\b|$)/i.exec(label);
+  if (pack) return ' (' + (quantity * Number(pack[1])) + ' pieces total)';
+  if (/^(?:pieces?|pcs?)$/i.test(label)) return ' (' + quantity + ' pieces total)';
+  return '';
+}
+
 /** Message is based on the SAVED status, not an unsaved admin form selection. */
 export function whatsappOrderMessage(order: OrderForWhatsApp): string {
   const statusText: Record<string, string> = {
@@ -66,7 +75,7 @@ export function whatsappOrderMessage(order: OrderForWhatsApp): string {
   };
   const name = order.customer_name.trim().split(/\s+/)[0] || 'there';
   const items = order.order_items.map(item =>
-    '- ' + item.quantity + ' x ' + item.product_name_snapshot + (item.unit_label_snapshot ? ' (' + item.unit_label_snapshot + ')' : '') + ' — ' + price(item.line_total_cents),
+    '- ' + item.quantity + ' x ' + item.product_name_snapshot + (item.unit_label_snapshot ? ' (' + item.unit_label_snapshot + ')' : '') + pieceTotal(item.quantity, item.unit_label_snapshot) + ' — ' + price(item.line_total_cents),
   );
   const note = order.status_comment?.trim();
   const redundantNote = order.status === 'ready_for_pickup' && /ready for pickup/i.test(note || '');
