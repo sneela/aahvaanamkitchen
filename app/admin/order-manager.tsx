@@ -71,11 +71,12 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
     if (!/^\d+(\.\d{1,2})?$/.test(deliveryFee.trim()) || !Number.isFinite(numericFee) || numericFee < 0 || numericFee > 10000) {setLocalError('Enter a valid delivery fee.');return;}
     const numericDiscount = Number(discountValue);
     if (!Number.isFinite(numericDiscount) || numericDiscount < 0 || (discountType === 'percent' && numericDiscount > 100) || (discountType === 'fixed' && Math.round(numericDiscount * 100) > order.subtotal_cents)) { setLocalError('Invalid discount amount'); return; }
-    await save('PATCH', {
+    const saved = await save('PATCH', {
       delivery_fee_cents: Math.round(numericFee * 100), discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
       resource: 'order', id: order.id, status: nextStatus,
       status_comment: note, payment_status: payment,
     });
+    if (saved) await refresh();
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void update(status); };
   const chatLink = whatsappLink(order.customer_phone);
