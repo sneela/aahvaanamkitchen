@@ -53,11 +53,20 @@ export function whatsappLink(rawPhone: string, message?: string): string | null 
 }
 
 /** Show piece totals only when the saved item unit explicitly specifies a piece count. */
-function pieceTotal(quantity: number, unit?: string): string {
+function pieceTotal(quantity: number, unit?: string, name?: string): string {
   const label = (unit || '').trim();
   const pack = /(?:^|\b)(\d+)\s*(?:pieces?|pcs?)(?:\b|$)/i.exec(label);
   if (pack) return ' (' + (quantity * Number(pack[1])) + ' pieces total)';
   if (/^(?:pieces?|pcs?)$/i.test(label)) return ' (' + quantity + ' pieces total)';
+  // Older orders may not have a unit snapshot. Use known fixed-size menu servings.
+  if (!label) {
+    const servings: Record<string, number> = {
+      'mirchi bajji': 5, 'mysore bonda': 5, 'punugulu': 12,
+      'jowar roti': 5, 'rice roti': 5, 'ragi roti': 5,
+    };
+    const pieces = servings[(name || '').trim().toLowerCase()];
+    if (pieces) return ' (' + (quantity * pieces) + ' pieces total)';
+  }
   return '';
 }
 
@@ -75,7 +84,7 @@ export function whatsappOrderMessage(order: OrderForWhatsApp): string {
   };
   const name = order.customer_name.trim().split(/\s+/)[0] || 'there';
   const items = order.order_items.map(item =>
-    '- ' + item.quantity + ' x ' + item.product_name_snapshot + (item.unit_label_snapshot ? ' (' + item.unit_label_snapshot + ')' : '') + pieceTotal(item.quantity, item.unit_label_snapshot) + ' — ' + price(item.line_total_cents),
+    '- ' + item.quantity + ' x ' + item.product_name_snapshot + (item.unit_label_snapshot ? ' (' + item.unit_label_snapshot + ')' : '') + pieceTotal(item.quantity, item.unit_label_snapshot, item.product_name_snapshot) + ' — ' + price(item.line_total_cents),
   );
   const note = order.status_comment?.trim();
   const redundantNote = order.status === 'ready_for_pickup' && /ready for pickup/i.test(note || '');
