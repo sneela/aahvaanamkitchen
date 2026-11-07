@@ -57,3 +57,14 @@ test('confirmation, rejection, delivery and kitchen comments are reflected in dr
   assert.match(whatsappOrderMessage({ ...order, status: 'ready_for_pickup' }), /ready for pickup/i);
   assert.match(whatsappOrderMessage({ ...order, status: 'out_for_delivery' }), /out for delivery/i);
 });
+
+test('message displays accurate total pieces for explicitly piece-sized items',()=>{
+ const text=whatsappOrderMessage({...order,order_items:[
+  {product_name_snapshot:'Jowar Roti',quantity:2,unit_label_snapshot:'5 pcs',line_total_cents:2000},
+  {product_name_snapshot:'Bobbatlu',quantity:10,unit_label_snapshot:'piece',line_total_cents:2000},
+  {product_name_snapshot:'Mysore Bonda',quantity:2,unit_label_snapshot:'plate',line_total_cents:2000},
+ ]});
+ assert.match(text,/2 x Jowar Roti \\(5 pcs\\) \\(10 pieces total\\)/);
+ assert.match(text,/10 x Bobbatlu \\(piece\\) \\(10 pieces total\\)/);
+ assert.doesNotMatch(text,/Mysore Bonda.*pieces total/);
+});
