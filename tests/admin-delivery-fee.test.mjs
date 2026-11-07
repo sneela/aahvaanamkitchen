@@ -17,6 +17,6 @@ test('admin order form exposes delivery fee for delivery orders',()=>{
 });
 test('admin date filter uses real digit regex',()=>{
  const api=read('app/api/admin/orders/route.ts');
- assert.match(api,/\^\\d\{4\}-\\d\{2\}-\\d\{2\}/);
- assert.doesNotMatch(api,/\^\\\\d\{4\}/);
+ assert.ok(api.includes(String.raw`/^\\d{4}-\\d{2}-\\d{2}$/`),'Date regex must match YYYY-MM-DD');
+ assert.ok(!api.includes(String.raw`/^\\\\d{4}`),'Date regex must not match a literal backslash');
 });
