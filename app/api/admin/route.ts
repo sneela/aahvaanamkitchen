@@ -234,7 +234,6 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (!existing) return badRequest('Order not found', 404);
         if (b.delivery_fee_cents !== undefined && (typeof b.delivery_fee_cents !== 'number' || !Number.isSafeInteger(b.delivery_fee_cents) || b.delivery_fee_cents < 0 || b.delivery_fee_cents > 1000000)) return badRequest('Delivery fee must be a valid nonnegative amount in cents', 422);
         const deliveryFee = b.delivery_fee_cents === undefined ? existing.delivery_fee_cents : b.delivery_fee_cents;
-        if (existing.fulfillment === 'pickup' && deliveryFee !== 0) return badRequest('Pickup orders cannot have a delivery fee', 422);
         data.delivery_fee_cents = deliveryFee;
         const type = b.discount_type === undefined ? (existing.discount_type || 'none') : b.discount_type;
         const value = b.discount_value === undefined ? (existing.discount_value || 0) : b.discount_value;
