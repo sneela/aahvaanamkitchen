@@ -26,6 +26,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   const [status, setStatus] = useState(order.status);
   const [payment, setPayment] = useState(order.payment_status);
   const [comment, setComment] = useState(order.status_comment || '');
+  const [deliveryFee, setDeliveryFee] = useState((order.delivery_fee_cents / 100).toFixed(2));
   const [discountType, setDiscountType] = useState(order.discount_type || 'none');
   const [discountValue, setDiscountValue] = useState(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0));
   const [discountReason, setDiscountReason] = useState(order.discount_reason || '');
@@ -50,9 +51,10 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   };
   useEffect(() => {
     setStatus(order.status); setPayment(order.payment_status); setComment(order.status_comment || '');
+    setDeliveryFee((order.delivery_fee_cents / 100).toFixed(2));
     setDiscountType(order.discount_type || 'none'); setDiscountValue(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0)); setDiscountReason(order.discount_reason || '');
     setLocalError('');
-  }, [order.id, order.status, order.payment_status, order.status_comment, order.discount_type, order.discount_value, order.discount_reason]);
+  }, [order.id, order.status, order.payment_status, order.status_comment, order.discount_type, order.discount_value, order.discount_reason, order.delivery_fee_cents]);
   const update = async (nextStatus: string) => {
     setLocalError('');
     let note = comment.trim();
@@ -65,10 +67,12 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
       return;
     }
     if (nextStatus === 'rejected' && !window.confirm('Reject order #' + order.order_number + '? The customer will see your comment.')) return;
+    const numericFee = Number(deliveryFee);
+    if (!/^\\d+(\\.\\d{1,2})?$/.test(deliveryFee.trim()) || !Number.isFinite(numericFee) || numericFee < 0 || numericFee > 10000 || (order.fulfillment === 'pickup' && numericFee !== 0)) {setLocalError('Enter a valid delivery fee (pickup orders must be $0).');return;}
     const numericDiscount = Number(discountValue);
     if (!Number.isFinite(numericDiscount) || numericDiscount < 0 || (discountType === 'percent' && numericDiscount > 100) || (discountType === 'fixed' && Math.round(numericDiscount * 100) > order.subtotal_cents)) { setLocalError('Invalid discount amount'); return; }
     await save('PATCH', {
-      discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
+      delivery_fee_cents: Math.round(numericFee * 100), discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
       resource: 'order', id: order.id, status: nextStatus,
       status_comment: note, payment_status: payment,
     });
@@ -98,6 +102,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
         <label>Payment<select value={payment} disabled={busy} onChange={e => setPayment(e.target.value)}>
           {payments.map(p => <option key={p} value={p}>{p}</option>)}
         </select></label>
+        <label>Delivery fee ($)<input aria-label="Delivery fee dollars" type="number" min="0" max="10000" step="0.01" value={deliveryFee} disabled={busy || order.fulfillment === 'pickup'} onChange={e=>setDeliveryFee(e.target.value)}/></label>
         <label>Discount type<select disabled={busy} value={discountType} onChange={e => { setDiscountType(e.target.value as 'none' | 'fixed' | 'percent'); setDiscountValue('0'); }}><option value="none">No discount</option><option value="fixed">Fixed amount ($)</option><option value="percent">Percentage (%)</option></select></label>
         {discountType !== 'none' && <><label>Discount amount<input type="number" min="0" step="0.01" max={discountType === 'percent' ? 100 : order.subtotal_cents / 100} value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={busy} /></label><label>Discount reason<input maxLength={250} value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={busy} /></label></>}
         <label>Message to customer<textarea maxLength={1000} disabled={busy} placeholder="Reason for rejection, pickup details, or another update" value={comment} onChange={e => setComment(e.target.value)} /></label>
