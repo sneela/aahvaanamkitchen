@@ -68,3 +68,8 @@ test('message displays accurate total pieces for explicitly piece-sized items',(
  assert.match(text,/10 x Bobbatlu \(piece\) \(10 pieces total\)/);
  assert.doesNotMatch(text,/Mysore Bonda.*pieces total/);
 });
+
+test('legacy Mirchi Bajji order includes total pieces without a saved unit',()=>{
+ const message=whatsappOrderMessage({...order,order_items:[{product_name_snapshot:'Mirchi Bajji',quantity:2,line_total_cents:2000}]});
+ assert.match(message,/2 x Mirchi Bajji \\(10 pieces total\\)/);
+});
