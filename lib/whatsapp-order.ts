@@ -55,7 +55,7 @@ export function whatsappLink(rawPhone: string, message?: string): string | null 
 /** Show piece totals only when the saved item unit explicitly specifies a piece count. */
 function pieceTotal(quantity: number, unit?: string): string {
   const label = (unit || '').trim();
-  const pack = /(?:^|\\b)(\\d+)\\s*(?:pieces?|pcs?)(?:\\b|$)/i.exec(label);
+  const pack = /(?:^|\b)(\d+)\s*(?:pieces?|pcs?)(?:\b|$)/i.exec(label);
   if (pack) return ' (' + (quantity * Number(pack[1])) + ' pieces total)';
   if (/^(?:pieces?|pcs?)$/i.test(label)) return ' (' + quantity + ' pieces total)';
   return '';
