@@ -43,9 +43,14 @@ try {
   await desktop.getByRole('button', { name: 'Add Jowar Roti to cart' }).click();
   await desktop.getByRole('button', { name: 'Cart (1)' }).click();
   await desktop.getByRole('button', { name: 'Continue to request' }).click();
-  assert.ok(await desktop.getByRole('link', { name: /ask a question on WhatsApp/i }).isVisible(), 'Offline checkout must clearly offer WhatsApp rather than pretending to save an order');
+  assert.ok(await desktop.getByRole('link', { name: /send us an inquiry/i }).isVisible(), 'Offline checkout must offer private contact instead of pretending to save an order');
+  assert.equal(await desktop.locator('.whatsapp-float').count(),0,'Public WhatsApp chat must be hidden by default');
   await desktop.screenshot({ path: 'artifacts/screenshots/desktop-checkout.png', fullPage: false });
   await desktop.getByRole('button', { name: /Close/ }).click();
+  await desktop.goto(base + '/');
+  assert.ok(await desktop.getByRole('link',{name:'Contact us'}).first().isVisible(),'Contact us navigation must be visible');
+  assert.ok(await desktop.locator('#contact form').isVisible(),'Contact form must be available');
+  assert.equal(await desktop.locator('.hero-image').count(),0,'Duplicate hero logo must be removed');
   await desktop.goto(base + '/catalog');
   assert.ok((await desktop.locator('body').innerText()).includes('Sample menu only.'), 'Offline catalog must disclose sample prices');
   await desktop.goto(base + '/admin/login');

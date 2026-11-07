@@ -197,3 +197,7 @@
 .announce-guidance{font-size:12px;line-height:1.55;color:var(--muted);margin:8px 0 0}
 .admin-announcements .admin-section-heading p{margin-bottom:9px}
 @media(max-width:760px){.product-photo .popular-tag{font-size:9px;max-width:calc(100% - 18px);left:9px;top:41px;padding:5px 7px}}
+
+/* The brand mark appears only in the header, not as a duplicate hero graphic. */
+.hero{grid-template-columns:minmax(0,1fr);min-height:unset}.hero-text{max-width:850px}
+#contact{scroll-margin-top:120px}

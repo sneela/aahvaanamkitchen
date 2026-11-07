@@ -9,7 +9,7 @@ export async function GET() {
   if (!mongoConfigured()) return NextResponse.json({ connected: false, products: menuItems, settings: {
     orderingEnabled: false, deliveryEnabled: false, analyticsEnabled: false, deliveryMinimumCents: 0, deliveryFeeCents: 0,
     minimumNoticeHours: 2, defaultPreorderNoticeHours: 24, maxAdvanceDays: 30,
-    whatsappNumber: defaultSettings.whatsapp_number, serviceArea: defaultSettings.service_area_description,
+    showWhatsappContact: false, serviceArea: defaultSettings.service_area_description,
   }, specials: [], reviews: [], announcements: [] }, { headers: noStore });
   try {
     const db = await mongoDb();
@@ -75,7 +75,7 @@ export async function GET() {
       settings: { orderingEnabled: settings.ordering_enabled, deliveryEnabled: settings.delivery_enabled, analyticsEnabled: settings.analytics_enabled !== false,
         deliveryMinimumCents: settings.delivery_minimum_cents, deliveryFeeCents: settings.default_delivery_fee_cents,
         minimumNoticeHours: settings.minimum_notice_hours, defaultPreorderNoticeHours: settings.default_preorder_notice_hours,
-        maxAdvanceDays: settings.max_advance_days, whatsappNumber: settings.whatsapp_number,
+        maxAdvanceDays: settings.max_advance_days, showWhatsappContact: settings.show_whatsapp_contact === true, ...(settings.show_whatsapp_contact === true ? { whatsappNumber: settings.whatsapp_number } : {}),
         serviceArea: settings.service_area_description },
       specials: activeSpecials.map(serialize),
       reviews: reviews.map(serialize),
