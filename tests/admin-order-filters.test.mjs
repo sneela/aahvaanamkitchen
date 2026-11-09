@@ -21,3 +21,13 @@ test('tomorrow and next two days have explicit inclusive bounds',()=>{
  assert.match(ui,/dateMode === 'next2' \? addDays\(today, 2\)/);
  assert.match(ui,/Next 2 days \(tomorrow \+ following day\)/);
 });
+
+test('calendar dates reject impossible days and counts are server-side',()=>{
+ assert.match(api,/function validCalendarDate/);
+ assert.match(api,/parsed\.toISOString\(\)\.slice\(0, 10\) === value/);
+ assert.match(api,/!validCalendarDate\(from\)/);
+ assert.match(api,/!validCalendarDate\(to\)/);
+ assert.match(api,/countDocuments\(query\)/);
+ assert.match(api,/totalMatching,/);
+ assert.match(ui,/setTotalMatching/);
+});
