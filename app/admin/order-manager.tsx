@@ -130,6 +130,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   const [endDate, setEndDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
+  const [totalMatching, setTotalMatching] = useState<number | null>(null);
   const [refreshError, setRefreshError] = useState('');
   const todayEastern = () => { const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const part = (type: string) => parts.find(p => p.type === type)?.value || ''; return `${part('year')}-${part('month')}-${part('day')}`; };
   const addDays = (iso: string, days: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
@@ -147,6 +148,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
       setFreshOrders(json.orders);
+      setTotalMatching(typeof json.totalMatching === 'number' ? json.totalMatching : null);
       setOlderOrders([]);
       setNextOffset(json.nextOffset);
     } catch (e) { setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
@@ -190,7 +192,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
       <label>Scheduled date<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
       {dateMode === 'custom' && <><label>From<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>To<input type="date" min={startDate || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} /></label></>}
       <button type="button" className="secondary" disabled={refreshing || busy} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
-      <span>{shown.length} matching loaded orders{nextOffset !== null ? ' (more available)' : ''}</span>
+      <span>{totalMatching === null ? shown.length : totalMatching} matching orders{nextOffset !== null ? ' (more available)' : ''}</span>
     </div>
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
