@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import WhatsAppActions from './whatsapp-actions';
 import { whatsappLink, whatsappOrderMessage } from '@/lib/whatsapp-order';
 
@@ -132,6 +132,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
   const [totalMatching, setTotalMatching] = useState<number | null>(null);
   const [refreshError, setRefreshError] = useState('');
+  const latestRequest = useRef(0);
   const todayEastern = () => { const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const part = (type: string) => parts.find(p => p.type === type)?.value || ''; return `${part('year')}-${part('month')}-${part('day')}`; };
   const addDays = (iso: string, days: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
   const filterParams = () => {
@@ -141,18 +142,19 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
     return new URLSearchParams({q:query,...(from?{from}:{}),...(to?{to}:{}),...(selectedStatuses.length?{statuses:selectedStatuses.join(',')}: {})}).toString();
   };
   const refresh = async () => {
-    if (refreshing) return;
+    const requestId = ++latestRequest.current;
     setRefreshing(true); setRefreshError('');
     try {
       const response = await fetch('/api/admin/orders?offset=0&' + filterParams(), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
+      if (requestId !== latestRequest.current) return;
       setFreshOrders(json.orders);
       setTotalMatching(typeof json.totalMatching === 'number' ? json.totalMatching : null);
       setOlderOrders([]);
       setNextOffset(json.nextOffset);
-    } catch (e) { setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
-    finally { setRefreshing(false); }
+    } catch (e) { if (requestId === latestRequest.current) setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
+    finally { if (requestId === latestRequest.current) setRefreshing(false); }
   };
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [query, selectedStatuses, dateMode, startDate, endDate]);
   const [olderOrders, setOlderOrders] = useState<AdminOrder[]>([]);
