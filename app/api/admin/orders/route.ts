@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       { delivery_address: { $regex: escaped, $options: 'i' } },
       { customer_notes: { $regex: escaped, $options: 'i' } },
       { status_comment: { $regex: escaped, $options: 'i' } },
-      ...( /^(pickup|delivery)$/i.test(search) ? [{ fulfillment: search.toLowerCase() }] : [] ),
+      ...( /^(pickup|delivery)$/i.test(search) ? [{ fulfillment: search.toLowerCase() as 'pickup' | 'delivery' }] : [] ),
       { 'order_items.product_name_snapshot': { $regex: escaped, $options: 'i' } },
       ...( /^[0-9]+$/.test(search) ? [{ order_number: Number(search) }] : [] ),
       ...(orderNumberSearch ? [{ order_number: Number(orderNumberSearch) }] : []),
