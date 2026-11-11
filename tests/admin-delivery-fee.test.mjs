@@ -21,3 +21,12 @@ test('admin date filter uses real digit regex',()=>{
  assert.ok(api.includes(expected), 'Date regex must match YYYY-MM-DD');
  assert.ok(!api.includes(String.raw`/^\\\\d{4}`), 'Date regex must not match a literal backslash');
 });
+
+test('admin search covers delivery and order context',()=>{
+ const api=read('app/api/admin/orders/route.ts');
+ for(const field of ['delivery_address','customer_notes','status_comment','fulfillment']) {
+  assert.ok(api.includes(field), 'Missing searchable field: '+field);
+ }
+ assert.match(api,/\$in: statuses/);
+ assert.match(api,/countDocuments\(query\)/);
+});
