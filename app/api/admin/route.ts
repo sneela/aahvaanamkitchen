@@ -78,7 +78,7 @@ function productFields(b: Record<string, unknown>, creating: boolean) {
 }
 function settingsFields(b: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
-  for (const key of ['ordering_enabled','delivery_enabled','analytics_enabled'] as const) if (b[key] !== undefined) {
+  for (const key of ['ordering_enabled','delivery_enabled','analytics_enabled','show_whatsapp_contact'] as const) if (b[key] !== undefined) {
     const v = bool(b[key]); if (v === null) throw new Error('Invalid '+key); data[key] = v;
   }
   for (const key of ['delivery_minimum_cents','default_delivery_fee_cents','minimum_notice_hours','default_preorder_notice_hours','max_advance_days'] as const) if (b[key] !== undefined) {
@@ -229,9 +229,12 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (typeof b.status_comment !== 'string' || b.status_comment.length > 1000) return badRequest('Invalid customer comment');
         data.status_comment = b.status_comment.trim();
       }
-      if (b.discount_type !== undefined || b.discount_value !== undefined || b.discount_reason !== undefined) {
+      if (b.discount_type !== undefined || b.discount_value !== undefined || b.discount_reason !== undefined || b.delivery_fee_cents !== undefined) {
         const existing = await db.collection('orders').findOne({ _id: new ObjectId(id) });
         if (!existing) return badRequest('Order not found', 404);
+        if (b.delivery_fee_cents !== undefined && (typeof b.delivery_fee_cents !== 'number' || !Number.isSafeInteger(b.delivery_fee_cents) || b.delivery_fee_cents < 0 || b.delivery_fee_cents > 1000000)) return badRequest('Delivery fee must be a valid nonnegative amount in cents', 422);
+        const deliveryFee = b.delivery_fee_cents === undefined ? existing.delivery_fee_cents : b.delivery_fee_cents;
+        data.delivery_fee_cents = deliveryFee;
         const type = b.discount_type === undefined ? (existing.discount_type || 'none') : b.discount_type;
         const value = b.discount_value === undefined ? (existing.discount_value || 0) : b.discount_value;
         if (!['none', 'fixed', 'percent'].includes(String(type)) || typeof value !== 'number' || !Number.isFinite(value) || value < 0)
@@ -244,7 +247,7 @@ async function mutate(request: NextRequest, method: 'POST'|'PATCH'|'DELETE') {
         if (typeof reason !== 'string' || reason.length > 250) return badRequest('Invalid discount reason', 422);
         data.discount_type = type; data.discount_value = type === 'none' ? 0 : value;
         data.discount_cents = amount; data.discount_reason = reason.trim();
-        data.total_cents = existing.subtotal_cents - amount + existing.delivery_fee_cents;
+        data.total_cents = existing.subtotal_cents - amount + deliveryFee;
       }
       if (data.status === 'rejected' && !data.status_comment) return badRequest('Add an explanation before rejecting an order',422);
       if (!Object.keys(data).length) return badRequest('No changes');

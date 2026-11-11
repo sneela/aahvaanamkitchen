@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import WhatsAppActions from './whatsapp-actions';
 import { whatsappLink, whatsappOrderMessage } from '@/lib/whatsapp-order';
 
@@ -26,6 +26,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   const [status, setStatus] = useState(order.status);
   const [payment, setPayment] = useState(order.payment_status);
   const [comment, setComment] = useState(order.status_comment || '');
+  const [deliveryFee, setDeliveryFee] = useState((order.delivery_fee_cents / 100).toFixed(2));
   const [discountType, setDiscountType] = useState(order.discount_type || 'none');
   const [discountValue, setDiscountValue] = useState(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0));
   const [discountReason, setDiscountReason] = useState(order.discount_reason || '');
@@ -50,9 +51,10 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
   };
   useEffect(() => {
     setStatus(order.status); setPayment(order.payment_status); setComment(order.status_comment || '');
+    setDeliveryFee((order.delivery_fee_cents / 100).toFixed(2));
     setDiscountType(order.discount_type || 'none'); setDiscountValue(order.discount_type === 'fixed' ? String((order.discount_value || 0) / 100) : String(order.discount_value || 0)); setDiscountReason(order.discount_reason || '');
     setLocalError('');
-  }, [order.id, order.status, order.payment_status, order.status_comment, order.discount_type, order.discount_value, order.discount_reason]);
+  }, [order.id, order.status, order.payment_status, order.status_comment, order.discount_type, order.discount_value, order.discount_reason, order.delivery_fee_cents]);
   const update = async (nextStatus: string) => {
     setLocalError('');
     let note = comment.trim();
@@ -65,13 +67,16 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
       return;
     }
     if (nextStatus === 'rejected' && !window.confirm('Reject order #' + order.order_number + '? The customer will see your comment.')) return;
+    const numericFee = Number(deliveryFee);
+    if (!/^\d+(\.\d{1,2})?$/.test(deliveryFee.trim()) || !Number.isFinite(numericFee) || numericFee < 0 || numericFee > 10000) {setLocalError('Enter a valid delivery fee.');return;}
     const numericDiscount = Number(discountValue);
     if (!Number.isFinite(numericDiscount) || numericDiscount < 0 || (discountType === 'percent' && numericDiscount > 100) || (discountType === 'fixed' && Math.round(numericDiscount * 100) > order.subtotal_cents)) { setLocalError('Invalid discount amount'); return; }
-    await save('PATCH', {
-      discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
+    const saved = await save('PATCH', {
+      delivery_fee_cents: Math.round(numericFee * 100), discount_type: discountType, discount_value: discountType === 'fixed' ? Math.round(numericDiscount * 100) : numericDiscount, discount_reason: discountReason,
       resource: 'order', id: order.id, status: nextStatus,
       status_comment: note, payment_status: payment,
     });
+    if (saved) await refresh();
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void update(status); };
   const chatLink = whatsappLink(order.customer_phone);
@@ -98,6 +103,7 @@ function OrderRow({ order, busy, save, refresh, products }: { order: AdminOrder;
         <label>Payment<select value={payment} disabled={busy} onChange={e => setPayment(e.target.value)}>
           {payments.map(p => <option key={p} value={p}>{p}</option>)}
         </select></label>
+        <label>Delivery fee ($)<input aria-label="Delivery fee dollars" type="number" min="0" max="10000" step="0.01" value={deliveryFee} disabled={busy} onChange={e=>setDeliveryFee(e.target.value)}/></label>
         <label>Discount type<select disabled={busy} value={discountType} onChange={e => { setDiscountType(e.target.value as 'none' | 'fixed' | 'percent'); setDiscountValue('0'); }}><option value="none">No discount</option><option value="fixed">Fixed amount ($)</option><option value="percent">Percentage (%)</option></select></label>
         {discountType !== 'none' && <><label>Discount amount<input type="number" min="0" step="0.01" max={discountType === 'percent' ? 100 : order.subtotal_cents / 100} value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={busy} /></label><label>Discount reason<input maxLength={250} value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={busy} /></label></>}
         <label>Message to customer<textarea maxLength={1000} disabled={busy} placeholder="Reason for rejection, pickup details, or another update" value={comment} onChange={e => setComment(e.target.value)} /></label>
@@ -124,31 +130,38 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   const [endDate, setEndDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
+  const [totalMatching, setTotalMatching] = useState<number | null>(null);
   const [refreshError, setRefreshError] = useState('');
+  const latestRequest = useRef(0);
   const todayEastern = () => { const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()); const part = (type: string) => parts.find(p => p.type === type)?.value || ''; return `${part('year')}-${part('month')}-${part('day')}`; };
   const addDays = (iso: string, days: number) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
+  const filterParams = () => {
+    const today = todayEastern();
+    const from = dateMode === 'today' ? today : dateMode === 'tomorrow' || dateMode === 'next2' ? addDays(today, 1) : dateMode === 'custom' ? startDate : '';
+    const to = dateMode === 'today' ? today : dateMode === 'tomorrow' ? addDays(today, 1) : dateMode === 'next2' ? addDays(today, 2) : dateMode === 'custom' ? endDate : '';
+    return new URLSearchParams({q:query,...(from?{from}:{}),...(to?{to}:{}),...(selectedStatuses.length?{statuses:selectedStatuses.join(',')}: {})}).toString();
+  };
   const refresh = async () => {
-    if (refreshing) return;
+    const requestId = ++latestRequest.current;
     setRefreshing(true); setRefreshError('');
     try {
-      const response = await fetch('/api/admin/orders?offset=0&q=' + encodeURIComponent(query), { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=0&' + filterParams(), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
+      if (requestId !== latestRequest.current) return;
       setFreshOrders(json.orders);
+      setTotalMatching(typeof json.totalMatching === 'number' ? json.totalMatching : null);
       setOlderOrders([]);
       setNextOffset(json.nextOffset);
-    } catch (e) { setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
-    finally { setRefreshing(false); }
+    } catch (e) { if (requestId === latestRequest.current) setRefreshError(e instanceof Error ? e.message : 'Unable to refresh orders'); }
+    finally { if (requestId === latestRequest.current) setRefreshing(false); }
   };
-  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [query]);
+  useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [query, selectedStatuses, dateMode, startDate, endDate]);
   const [olderOrders, setOlderOrders] = useState<AdminOrder[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(orders.length === 100 ? 100 : null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState('');
   useEffect(() => {
-    setFreshOrders(null);
-    setOlderOrders([]);
-    setNextOffset(orders.length === 100 ? 100 : null);
     setOlderError('');
   }, [orders]);
   const loadedOrders = [...(freshOrders ?? orders), ...olderOrders];
@@ -156,7 +169,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
     if (nextOffset === null || loadingOlder) return;
     setLoadingOlder(true); setOlderError('');
     try {
-      const response = await fetch('/api/admin/orders?offset=' + nextOffset + '&q=' + encodeURIComponent(query), { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=' + nextOffset + '&' + filterParams(), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to load older orders');
       setOlderOrders(previous => [...previous, ...json.orders]);
@@ -181,7 +194,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
       <label>Scheduled date<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
       {dateMode === 'custom' && <><label>From<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>To<input type="date" min={startDate || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} /></label></>}
       <button type="button" className="secondary" disabled={refreshing || busy} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
-      <span>{shown.length} of {loadedOrders.length} loaded orders</span>
+      <span>{totalMatching === null ? shown.length : totalMatching} matching orders{nextOffset !== null ? ' (more available)' : ''}</span>
     </div>
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
