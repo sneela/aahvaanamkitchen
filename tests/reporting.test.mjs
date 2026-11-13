@@ -26,3 +26,12 @@ test('inclusive date range and fulfillment basis',()=>{
  assert.equal(r.summary.orders,1);
  assert.equal(buildReport([order()],{from:'2026-11-02',to:'2026-11-02',basis:'placed'}).summary.orders,0);
 });
+
+test('report status filters combine with dates and retain cancelled counts',()=>{
+ const rows=[order(),order({order_number:2,status:'pending',payment_status:'unpaid'}),order({order_number:3,status:'cancelled',payment_status:'refunded'}),order({order_number:4,status:'completed',requested_date:'2026-11-03'})];
+ const r=buildReport(rows,{basis:'fulfillment',from:'2026-11-02',to:'2026-11-02',statuses:['completed','cancelled']});
+ assert.equal(r.summary.orders,1);assert.equal(r.summary.cancelled,1);assert.equal(r.summary.total,21);
+ assert.deepEqual(r.byStatus,[{status:'cancelled',orders:1,total:21,collected:0},{status:'completed',orders:1,total:21,collected:21}]);
+ assert.equal(buildReport(rows,{statuses:[]}).byStatus.length,3);
+ assert.equal(buildReport(rows,{statuses:['preparing']}).byStatus.length,0);
+});
