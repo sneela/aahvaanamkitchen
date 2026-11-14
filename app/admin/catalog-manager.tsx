@@ -156,7 +156,14 @@ export function CatalogManager({ products, categories, busy, save }: { products:
   const create = async (e: FormEvent) => {
     e.preventDefault();
     if (uploading) return;
-    if (await save('POST', productPayload(newItem))) { setNewItem(emptyProduct()); setCopySource(''); setShowAdd(false); }
+    const payload = productPayload(newItem);
+    if (copySource && products.some(p => p.slug === slug(newItem.name || ''))) {
+      const suffix = slug(newItem.unit_label || 'copy') || 'copy';
+      const base = slug(newItem.name || 'menu-item').slice(0, Math.max(1, 99 - suffix.length)).replace(/-$/g, '');
+      const candidate = `${base}-${suffix}`;
+      if (!products.some(p => p.slug === candidate)) payload.slug = candidate;
+    }
+    if (await save('POST', payload)) { setNewItem(emptyProduct()); setCopySource(''); setShowAdd(false); }
   };
   return <section className="admin-catalog">
     <div className="admin-section-heading"><div><h2>Menu items</h2><p>All items and settings are listed below. Scroll horizontally to see every column.</p></div><button className="primary" type="button" onClick={() => setShowAdd(v => !v)}>{showAdd ? 'Close add form' : '+ Add menu item'}</button></div>
