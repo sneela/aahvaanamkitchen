@@ -158,10 +158,10 @@ export function CatalogManager({ products, categories, busy, save }: { products:
     if (uploading) return;
     const payload = productPayload(newItem);
     if (copySource && products.some(p => p.slug === slug(newItem.name || ''))) {
-      const suffix = slug(newItem.unit_label || 'copy') || 'copy';
+      const suffix = slug(newItem.unit_label || 'copy').slice(0, 48).replace(/-$/g, '') || 'copy';
       const base = slug(newItem.name || 'menu-item').slice(0, Math.max(1, 99 - suffix.length)).replace(/-$/g, '');
       const candidate = `${base}-${suffix}`;
-      if (!products.some(p => p.slug === candidate)) payload.slug = candidate;
+      payload.slug = candidate;
     }
     if (await save('POST', payload)) { setNewItem(emptyProduct()); setCopySource(''); setShowAdd(false); }
   };
