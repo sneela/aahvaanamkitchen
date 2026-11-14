@@ -98,7 +98,7 @@ function productPayload(v: CatalogRow): Record<string, unknown> {
   };
 }
 
-function ProductTableRow({ product, categories, busy, save }: { product: CatalogRow; categories: CategoryRow[]; busy: boolean; save: Save }) {
+function ProductTableRow({ product, categories, busy, save, onCopy }: { product: CatalogRow; categories: CategoryRow[]; busy: boolean; save: Save; onCopy: (product: CatalogRow) => void }) {
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [draft, setDraft] = useState<CatalogRow>({ ...product });
@@ -131,6 +131,7 @@ function ProductTableRow({ product, categories, busy, save }: { product: Catalog
     <td>
       <form id={'edit-' + product.id} onSubmit={e => void submit(e)} className="admin-table-actions">
         {editing ? <><button className="primary" disabled={busy || uploading} type="submit">Save</button><button className="admin-action" disabled={busy || uploading} type="button" onClick={cancel}>Cancel</button></> : <button className="admin-action" disabled={busy} type="button" onClick={edit}>Edit</button>}
+        {!editing && <button type="button" className="admin-action" disabled={busy} onClick={() => onCopy(product)}>Copy item</button>}
         <button type="button" className="danger" disabled={busy || uploading} onClick={() => void remove()}>Delete</button>
       </form>
     </td>
@@ -142,17 +143,26 @@ export function CatalogManager({ products, categories, busy, save }: { products:
   const [newItem, setNewItem] = useState<CatalogRow>(emptyProduct);
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState('');
+  const [copySource, setCopySource] = useState('');
+  const copy = (product: CatalogRow) => {
+    if (uploading || busy) return;
+    if (showAdd && !window.confirm('Replace the current unsaved new item?')) return;
+    setNewItem({ ...emptyProduct(), ...product, id: '', slug: undefined, name: (product.name || 'Menu item').slice(0, 113) + ' (copy)' });
+    setCopySource(product.name || 'Menu item');
+    setShowAdd(true);
+    requestAnimationFrame(() => document.getElementById('new-menu-item')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   const matching = products.filter(p => (p.name + ' ' + p.slug + ' ' + p.description).toLowerCase().includes(filter.toLowerCase()));
   const create = async (e: FormEvent) => {
     e.preventDefault();
     if (uploading) return;
-    if (await save('POST', productPayload(newItem))) { setNewItem(emptyProduct()); setShowAdd(false); }
+    if (await save('POST', productPayload(newItem))) { setNewItem(emptyProduct()); setCopySource(''); setShowAdd(false); }
   };
   return <section className="admin-catalog">
     <div className="admin-section-heading"><div><h2>Menu items</h2><p>All items and settings are listed below. Scroll horizontally to see every column.</p></div><button className="primary" type="button" onClick={() => setShowAdd(v => !v)}>{showAdd ? 'Close add form' : '+ Add menu item'}</button></div>
-    {showAdd && <article className="admin-card admin-new-product"><h3>Add a new menu item</h3><form onSubmit={e => void create(e)}><ProductFields v={newItem} setV={setNewItem} categories={categories} prefix="new" busy={busy} onUploadState={setUploading} /><div className="wide"><button type="submit" className="primary" disabled={busy || uploading}>Save new item</button><button type="button" className="admin-action" onClick={() => { setShowAdd(false); setNewItem(emptyProduct()); }} disabled={busy || uploading}>Cancel</button></div></form></article>}
+    {showAdd && <article id="new-menu-item" className="admin-card admin-new-product"><h3>{copySource ? `Copy of ${copySource}` : 'Add a new menu item'}</h3>{copySource && <p>Change the name, unit and price as needed (for example, Chicken Curry (32 oz)). Saving creates a separate item; the original is unchanged.</p>}<form onSubmit={e => void create(e)}><ProductFields v={newItem} setV={setNewItem} categories={categories} prefix="new" busy={busy} onUploadState={setUploading} /><div className="wide"><button type="submit" className="primary" disabled={busy || uploading}>Save new item</button><button type="button" className="admin-action" onClick={() => { setShowAdd(false); setNewItem(emptyProduct()); setCopySource(''); }} disabled={busy || uploading}>Cancel</button></div></form></article>}
     <div className="admin-table-tools"><label>Search menu<input type="search" placeholder="Search by name, description, or slug" value={filter} onChange={e => setFilter(e.target.value)} /></label><span>{matching.length} of {products.length} items</span></div>
-    <div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{['Photo','Item name','Slug','Category','Price','Unit','Description','Available','Pre-order','Notice hrs','Dietary','Sort','Actions'].map(h => <th key={h} scope="col">{h}</th>)}</tr></thead><tbody>{matching.map(p => <ProductTableRow key={p.id} product={p} categories={categories} busy={busy} save={save} />)}{!matching.length && <tr><td colSpan={13}>No matching menu items.</td></tr>}</tbody></table></div>
+    <div className="admin-table-scroll"><table className="admin-data-table"><thead><tr>{['Photo','Item name','Slug','Category','Price','Unit','Description','Available','Pre-order','Notice hrs','Dietary','Sort','Actions'].map(h => <th key={h} scope="col">{h}</th>)}</tr></thead><tbody>{matching.map(p => <ProductTableRow key={p.id} product={p} categories={categories} busy={busy} save={save} onCopy={copy} />)}{!matching.length && <tr><td colSpan={13}>No matching menu items.</td></tr>}</tbody></table></div>
   </section>;
 }
 
