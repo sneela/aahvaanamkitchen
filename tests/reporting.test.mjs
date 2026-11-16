@@ -35,3 +35,8 @@ test('report status filters combine with dates and retain cancelled counts',()=>
  assert.equal(buildReport(rows,{statuses:[]}).byStatus.length,3);
  assert.equal(buildReport(rows,{statuses:['preparing']}).byStatus.length,0);
 });
+
+test('weekly totals retain exact cents across daily totals',()=>{
+ const r=buildReport([order({created_at:'2026-11-02T14:00:00Z',total_cents:10}),order({order_number:2,created_at:'2026-11-03T14:00:00Z',total_cents:20})]);
+ assert.equal(r.weekly[0].total,0.3);assert.equal(r.weekly[0].collected,0.3);
+});
