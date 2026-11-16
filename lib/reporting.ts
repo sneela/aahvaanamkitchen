@@ -47,10 +47,10 @@ export function buildReport(all:ReportOrder[],filters:{from?:string;to?:string;b
  }
  const daily=[...days.values()].sort((a,b)=>a.date.localeCompare(b.date)).map(d=>({date:d.date,orders:d.orders,total:dollars(d.total_cents),collected:dollars(d.paid_cents)}));
  const weeks=new Map<string,{week:string;orders:number;total:number;collected:number}>();
- for(const day of daily){const date=new Date(day.date+'T12:00:00Z');const offset=(date.getUTCDay()+6)%7;date.setUTCDate(date.getUTCDate()-offset);const week=date.toISOString().slice(0,10);const row=weeks.get(week)||{week,orders:0,total:0,collected:0};row.orders+=day.orders;row.total+=day.total;row.collected+=day.collected;weeks.set(week,row);}
+ for(const day of daily){const date=new Date(day.date+'T12:00:00Z');const offset=(date.getUTCDay()+6)%7;date.setUTCDate(date.getUTCDate()-offset);const week=date.toISOString().slice(0,10);const row=weeks.get(week)||{week,orders:0,total:0,collected:0};row.orders+=day.orders;row.total+=Math.round(day.total*100);row.collected+=Math.round(day.collected*100);weeks.set(week,row);}
  const byStatus=[...new Set(orders.map(o=>o.status))].sort().map(status=>{
   const rows=orders.filter(o=>o.status===status);
   return {status,orders:rows.length,total:dollars(sum(rows,o=>o.total_cents||0)),collected:dollars(sum(rows.filter(o=>o.payment_status==='paid'),o=>o.total_cents||0))};
  });
- return {summary,byStatus,items:[...items.values()].sort((a,b)=>b.quantity-a.quantity).map(i=>({name:i.name,unit:i.unit,quantity:i.quantity,orders:i.orders.size,gross:dollars(i.gross_cents)})),customers:[...customers.values()].sort((a,b)=>b.total_cents-a.total_cents).map(c=>({key:c.key,name:c.name,phone:c.phone,orders:c.orders,total:dollars(c.total_cents),paid:dollars(c.paid_cents),last_order:c.last_order,history:c.history.sort((a,b)=>b.date.localeCompare(a.date))})),daily,weekly:[...weeks.values()].sort((a,b)=>a.week.localeCompare(b.week))};
+ return {summary,byStatus,items:[...items.values()].sort((a,b)=>b.quantity-a.quantity).map(i=>({name:i.name,unit:i.unit,quantity:i.quantity,orders:i.orders.size,gross:dollars(i.gross_cents)})),customers:[...customers.values()].sort((a,b)=>b.total_cents-a.total_cents).map(c=>({key:c.key,name:c.name,phone:c.phone,orders:c.orders,total:dollars(c.total_cents),paid:dollars(c.paid_cents),last_order:c.last_order,history:c.history.sort((a,b)=>b.date.localeCompare(a.date))})),daily,weekly:[...weeks.values()].sort((a,b)=>a.week.localeCompare(b.week)).map(w=>({...w,total:dollars(w.total),collected:dollars(w.collected)}))};
 }
