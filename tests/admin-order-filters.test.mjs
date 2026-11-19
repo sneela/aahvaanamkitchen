@@ -14,7 +14,9 @@ test('UI preserves combined filters across refresh and pagination',()=>{
  assert.match(ui,/const filterParams =/);
  assert.match(ui,/statuses:selectedStatuses\.join/);
  assert.match(ui,/offset=0&/);
- assert.match(ui,/nextOffset \+ '&' \+ filterParams/);
+ assert.match(ui,/const requestedOffset = nextOffset/);
+ assert.match(ui,/const requestedFilters = filterParams\(\)/);
+ assert.match(ui,/requestedOffset/);
  assert.match(ui,/\[query, selectedStatuses, dateMode, startDate, endDate\]/);
 });
 test('tomorrow and next two days have explicit inclusive bounds',()=>{
