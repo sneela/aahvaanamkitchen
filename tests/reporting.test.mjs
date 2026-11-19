@@ -40,3 +40,19 @@ test('weekly totals retain exact cents across daily totals',()=>{
  const r=buildReport([order({created_at:'2026-11-02T14:00:00Z',total_cents:10}),order({order_number:2,created_at:'2026-11-03T14:00:00Z',total_cents:20})]);
  assert.equal(r.weekly[0].total,0.3);assert.equal(r.weekly[0].collected,0.3);
 });
+
+test('catalog report includes unsold items and counts distinct orders and pieces',()=>{
+ const catalog=[{slug:'mirchi-bajji',name:'Mirchi Bajji',unit_label:'5 pcs'},{slug:'chicken-curry',name:'Chicken Curry',unit_label:'16 oz'}];
+ const rows=[order({order_items:[{product_slug_snapshot:'mirchi-bajji',product_name_snapshot:'Mirchi Bajji',unit_label_snapshot:'5 pcs',quantity:2,line_total_cents:2000}]}),order({order_number:2,order_items:[{product_slug_snapshot:'mirchi-bajji',product_name_snapshot:'Mirchi Bajji',unit_label_snapshot:'5 pcs',quantity:3,line_total_cents:3000}]}),order({order_number:3,status:'cancelled',order_items:[{product_slug_snapshot:'mirchi-bajji',product_name_snapshot:'Mirchi Bajji',unit_label_snapshot:'5 pcs',quantity:10,line_total_cents:10000}]})];
+ const report=buildReport(rows,{},catalog);
+ const bajji=report.itemSales.find(x=>x.slug==='mirchi-bajji');
+ assert.equal(bajji.orders,2);assert.equal(bajji.quantity,5);assert.equal(bajji.pieces,25);
+ const curry=report.itemSales.find(x=>x.slug==='chicken-curry');
+ assert.equal(curry.orders,0);assert.equal(curry.quantity,0);assert.equal(curry.pieces,null);
+});
+test('item sales obey date and multi-status filters',()=>{
+ const catalog=[{slug:'bonda',name:'Bonda',unit_label:'5 pieces'}];
+ const rows=[order({status:'completed',order_items:[{product_slug_snapshot:'bonda',product_name_snapshot:'Bonda',unit_label_snapshot:'5 pieces',quantity:2,line_total_cents:2000}]}),order({order_number:2,status:'pending',requested_date:'2026-11-03',order_items:[{product_slug_snapshot:'bonda',product_name_snapshot:'Bonda',unit_label_snapshot:'5 pieces',quantity:4,line_total_cents:4000}]})];
+ const r=buildReport(rows,{basis:'fulfillment',from:'2026-11-02',to:'2026-11-02',statuses:['completed','pending']},catalog);
+ assert.equal(r.itemSales[0].orders,1);assert.equal(r.itemSales[0].pieces,10);
+});
