@@ -17,7 +17,8 @@ export async function GET(request:NextRequest){
   if(statuses.some(status=>!REPORT_STATUSES.some(allowed=>allowed===status)))return badRequest('Invalid report status');
   const db=await mongoDb();
   const docs=await db.collection<OrderDoc>('orders').find({},{projection:{customer_name:1,customer_phone:1,order_number:1,created_at:1,requested_date:1,status:1,payment_status:1,subtotal_cents:1,discount_cents:1,delivery_fee_cents:1,total_cents:1,order_items:1,fulfillment:1}}).toArray();
-  const report=buildReport(docs as ReportOrder[],{from,to,basis:basis as 'placed'|'fulfillment',statuses,fulfillment:p.get('fulfillment')||''});
+  const products=await db.collection('products').find({},{projection:{slug:1,name:1,unit_label:1}}).toArray();
+  const report=buildReport(docs as ReportOrder[],{from,to,basis:basis as 'placed'|'fulfillment',statuses,fulfillment:p.get('fulfillment')||''},products.map(product=>({slug:String(product.slug||''),name:String(product.name||''),unit_label:String(product.unit_label||'')})));
   return NextResponse.json({range:{from,to,basis,timezone:'America/New_York'},...report},{headers:{'Cache-Control':'no-store'}});
  }catch(error){return jsonError(error,'Unable to generate reports');}
 }
