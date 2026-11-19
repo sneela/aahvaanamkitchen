@@ -144,6 +144,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   const refresh = async () => {
     const requestId = ++latestRequest.current;
     setRefreshing(true); setRefreshError('');
+    setLoadingOlder(false);
     try {
       const response = await fetch('/api/admin/orders?offset=0&' + filterParams(), { cache: 'no-store' });
       const json = await response.json();
@@ -166,16 +167,20 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   }, [orders]);
   const loadedOrders = [...(freshOrders ?? orders), ...olderOrders];
   const loadOlder = async () => {
-    if (nextOffset === null || loadingOlder) return;
+    if (nextOffset === null || loadingOlder || refreshing) return;
+    const requestId = latestRequest.current;
+    const requestedOffset = nextOffset;
+    const requestedFilters = filterParams();
     setLoadingOlder(true); setOlderError('');
     try {
-      const response = await fetch('/api/admin/orders?offset=' + nextOffset + '&' + filterParams(), { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=' + requestedOffset + '&' + requestedFilters, { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to load older orders');
+      if (requestId !== latestRequest.current) return;
       setOlderOrders(previous => [...previous, ...json.orders]);
       setNextOffset(json.nextOffset);
-    } catch (e) { setOlderError(e instanceof Error ? e.message : 'Unable to load older orders'); }
-    finally { setLoadingOlder(false); }
+    } catch (e) { if (requestId === latestRequest.current) setOlderError(e instanceof Error ? e.message : 'Unable to load older orders'); }
+    finally { if (requestId === latestRequest.current) setLoadingOlder(false); }
   };
   const shown = loadedOrders.filter(o => {
     if (selectedStatuses.length && !selectedStatuses.includes(o.status)) return false;
@@ -204,6 +209,6 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
     </tbody></table></div>
     {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
     {olderError && <p role="alert" className="admin-error">{olderError}</p>}
-    {nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
+    {nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || refreshing || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
   </section>;
 }
