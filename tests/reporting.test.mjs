@@ -56,3 +56,12 @@ test('item sales obey date and multi-status filters',()=>{
  const r=buildReport(rows,{basis:'fulfillment',from:'2026-11-02',to:'2026-11-02',statuses:['completed','pending']},catalog);
  assert.equal(r.itemSales[0].orders,1);assert.equal(r.itemSales[0].pieces,10);
 });
+
+test('piece count falls back to explicit menu name when unit is plate',()=>{
+ const catalog=[{slug:'punugulu',name:'Punugulu (12 pcs)',unit_label:'plate'},{slug:'vada',name:'Vada (5 pieces)',unit_label:'plate'},{slug:'curry',name:'Chicken Curry (16 oz)',unit_label:'container'}];
+ const rows=[order({order_items:[{product_slug_snapshot:'punugulu',product_name_snapshot:'Punugulu (12 pcs)',unit_label_snapshot:'plate',quantity:3,line_total_cents:3000},{product_slug_snapshot:'vada',product_name_snapshot:'Vada (5 pieces)',unit_label_snapshot:'plate',quantity:2,line_total_cents:2000}]})];
+ const result=buildReport(rows,{},catalog);
+ assert.equal(result.itemSales.find(x=>x.slug==='punugulu').pieces,36);
+ assert.equal(result.itemSales.find(x=>x.slug==='vada').pieces,10);
+ assert.equal(result.itemSales.find(x=>x.slug==='curry').pieces,null);
+});
