@@ -20,7 +20,9 @@ const customerKey=(o:ReportOrder)=>(o.customer_phone||'').replace(/\D/g,'')||'na
 export type CatalogReportItem = {slug:string;name:string;unit_label:string};
 export function piecesPerUnit(label:string):number|null {
  const match=label.match(/(?:^|\s|\()([1-9]\d*)\s*(?:pcs?|pieces)(?:\b|\))/i);
- return match?Number(match[1]):null;
+ if(!match)return null;
+ const count=Number(match[1]);
+ return Number.isSafeInteger(count)&&count>0?count:null;
 }
 export function buildReport(all:ReportOrder[],filters:{from?:string;to?:string;basis?:'placed'|'fulfillment';statuses?:string[];fulfillment?:string}={},catalog:CatalogReportItem[]=[]){
  const orders=all.filter(o=>{
