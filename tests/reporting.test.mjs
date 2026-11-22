@@ -65,3 +65,9 @@ test('piece count falls back to explicit menu name when unit is plate',()=>{
  assert.equal(result.itemSales.find(x=>x.slug==='vada').pieces,10);
  assert.equal(result.itemSales.find(x=>x.slug==='curry').pieces,null);
 });
+
+test('piece counts reject unsafe numeric labels without fabricating totals',()=>{
+ const r=buildReport([order({order_items:[{product_slug_snapshot:'bulk',product_name_snapshot:'Bulk',unit_label_snapshot:'999999999999999999999 pieces',quantity:2,line_total_cents:2000}]})],{},[{slug:'bulk',name:'Bulk',unit_label:'999999999999999999999 pieces'}]);
+ assert.equal(r.itemSales[0].quantity,2);
+ assert.equal(r.itemSales[0].pieces,null);
+});
