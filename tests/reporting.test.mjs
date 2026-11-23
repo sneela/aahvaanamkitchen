@@ -71,3 +71,11 @@ test('piece counts reject unsafe numeric labels without fabricating totals',()=>
  assert.equal(r.itemSales[0].quantity,2);
  assert.equal(r.itemSales[0].pieces,null);
 });
+
+test('item-wise pieces reject multiplication overflow instead of returning an unsafe count',()=>{
+ const catalog=[{slug:'large-pack',name:'Large Pack',unit_label:'9007199254740991 pcs'}];
+ const rows=[order({order_items:[{product_slug_snapshot:'large-pack',product_name_snapshot:'Large Pack',unit_label_snapshot:'9007199254740991 pcs',quantity:2,line_total_cents:2000}]})];
+ const report=buildReport(rows,{},catalog);
+ assert.equal(report.itemSales[0].pieces,null);
+ assert.equal(report.itemSales[0].orders,1);
+});
