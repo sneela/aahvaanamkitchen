@@ -22,10 +22,13 @@ export async function GET(request: NextRequest) {
     const db = await mongoDb();
     const search = (request.nextUrl.searchParams.get('q') || '').trim().slice(0, 100);
     const orderNumberSearch = /^#(\d+)$/.exec(search)?.[1];
-    const escaped = search.replace(/[^a-zA-Z0-9 ]/g, ch => String.fromCharCode(92) + ch);
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\    const escaped = search.replace(/[^a-zA-Z0-9 ]/g, ch => String.fromCharCode(92) + ch);');
+    const phoneDigits = /^[+\d().\s-]+$/.test(search) ? search.replace(/\D/g, '') : '';
+    const phonePattern = phoneDigits.length >= 4 ? phoneDigits.split('').join('[^0-9]*') : '';
     const textQuery = search ? { $or: [
       { customer_name: { $regex: escaped, $options: 'i' } },
       { customer_phone: { $regex: escaped, $options: 'i' } },
+      ...(phonePattern ? [{ customer_phone: { $regex: phonePattern } }] : []),
       { delivery_address: { $regex: escaped, $options: 'i' } },
       { customer_notes: { $regex: escaped, $options: 'i' } },
       { status_comment: { $regex: escaped, $options: 'i' } },
