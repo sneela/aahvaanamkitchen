@@ -130,6 +130,7 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   const [endDate, setEndDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [freshOrders, setFreshOrders] = useState<AdminOrder[] | null>(null);
+  const [appliedFilters, setAppliedFilters] = useState<string | null>(null);
   const [totalMatching, setTotalMatching] = useState<number | null>(null);
   const [refreshError, setRefreshError] = useState('');
   const latestRequest = useRef(0);
@@ -145,12 +146,14 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
     const requestId = ++latestRequest.current;
     setRefreshing(true); setRefreshError('');
     setLoadingOlder(false);
+    const requestedFilters = filterParams();
     try {
-      const response = await fetch('/api/admin/orders?offset=0&' + filterParams(), { cache: 'no-store' });
+      const response = await fetch('/api/admin/orders?offset=0&' + requestedFilters, { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'Unable to refresh orders');
       if (requestId !== latestRequest.current) return;
       setFreshOrders(json.orders);
+      setAppliedFilters(requestedFilters);
       setTotalMatching(typeof json.totalMatching === 'number' ? json.totalMatching : null);
       setOlderOrders([]);
       setNextOffset(json.nextOffset);
@@ -165,9 +168,11 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
   useEffect(() => {
     setOlderError('');
   }, [orders]);
-  const loadedOrders = [...(freshOrders ?? orders), ...olderOrders];
+  const filtersCurrent = appliedFilters === filterParams() && search.trim() === query;
+  const loadedOrders = filtersCurrent ? [...(freshOrders ?? orders), ...olderOrders] : [];
   const loadOlder = async () => {
     if (nextOffset === null || loadingOlder || refreshing) return;
+    if (!filtersCurrent) return;
     const requestId = latestRequest.current;
     const requestedOffset = nextOffset;
     const requestedFilters = filterParams();
@@ -196,19 +201,19 @@ export default function OrderManager({ orders, busy, save, products, refresh: re
     <div className="admin-table-tools">
       <label>Search orders<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Order number, customer, product or phone" /></label>
       <details style={{position:'relative',minWidth:190}}><summary style={{cursor:'pointer',padding:10,border:'1px solid #ccc',borderRadius:6}}>Statuses: {selectedStatuses.length ? selectedStatuses.length+' selected' : 'All'}</summary><div style={{display:'grid',gap:6,padding:12,background:'var(--background, white)',border:'1px solid #ddd',borderRadius:6,maxHeight:240,overflowY:'auto'}}><label><input type="checkbox" checked={selectedStatuses.length===0} onChange={()=>setSelectedStatuses([])}/> All statuses</label>{statuses.map(([code,label])=><label key={code}><input type="checkbox" checked={selectedStatuses.includes(code)} onChange={e=>setSelectedStatuses(old=>e.target.checked?[...old,code]:old.filter(v=>v!==code))}/> {label}</label>)}</div></details>
-      <label>Scheduled date<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
+      <label>Scheduled date (Eastern time)<select value={dateMode} onChange={e => setDateMode(e.target.value as typeof dateMode)}><option value="all">All dates</option><option value="today">Today</option><option value="tomorrow">Tomorrow</option><option value="next2">Next 2 days (tomorrow + following day)</option><option value="custom">Custom range</option></select></label>
       {dateMode === 'custom' && <><label>From<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>To<input type="date" min={startDate || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} /></label></>}
       <button type="button" className="secondary" disabled={refreshing || busy} onClick={() => void refresh()}>{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
-      <span>{totalMatching === null ? shown.length : totalMatching} matching orders{nextOffset !== null ? ' (more available)' : ''}</span>
+      <span role="status">{!filtersCurrent || refreshing ? (refreshError ? 'Results unavailable' : 'Updating results…') : `${totalMatching ?? shown.length} matching orders${nextOffset !== null ? ' (more available)' : ''}`}</span>
     </div>
     <div className="admin-table-scroll"><table className="admin-data-table admin-orders-table"><thead><tr>
       {['Order','Customer','Requested','Ordered items','Total','Current status','Review / update'].map(title => <th scope="col" key={title}>{title}</th>)}
     </tr></thead><tbody>
       {shown.map(o => <OrderRow key={o.id} order={o} busy={busy} save={save} refresh={refresh} products={products} />)}
-      {!shown.length && <tr><td colSpan={7}>No matching orders found.</td></tr>}
+      {!shown.length && <tr><td colSpan={7}>{refreshError ? 'Unable to load matching orders. Refresh to retry.' : !filtersCurrent || refreshing ? 'Updating orders…' : 'No matching orders found.'}</td></tr>}
     </tbody></table></div>
     {refreshError && <p role="alert" className="admin-error">{refreshError}</p>}
     {olderError && <p role="alert" className="admin-error">{olderError}</p>}
-    {nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || refreshing || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
+    {filtersCurrent && nextOffset !== null && <div className="admin-older-orders"><button type="button" className="secondary" disabled={loadingOlder || refreshing || busy} onClick={() => void loadOlder()}>{loadingOlder ? 'Loading older orders…' : 'Load older orders'}</button><small>Loads the next 100 orders when available.</small></div>}
   </section>;
 }
